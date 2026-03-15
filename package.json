@@ -1,5 +1,5 @@
 {
-  "name": "@viewcommz/ralph-codex",
+  "name": "@graypark/ralph-codex",
   "version": "0.1.0",
   "type": "module",
   "description": "Ralph Loop for OpenAI Codex CLI — self-referential iterative development loops via Stop hooks",

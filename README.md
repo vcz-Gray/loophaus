@@ -14,7 +14,7 @@ Ralph Loop is a development methodology where an AI agent works on a task in a c
 ### Option 1: npx (recommended)
 
 ```bash
-npx @viewcommz/ralph-codex --global
+npx @graypark/ralph-codex --global
 ```
 
 ### Option 2: Clone and install
@@ -116,7 +116,7 @@ Tested on: Windows 10/11, macOS, Linux (Ubuntu/Debian).
 ## Uninstall
 
 ```bash
-npx @viewcommz/ralph-codex uninstall
+npx @graypark/ralph-codex uninstall
 # or
 node bin/uninstall.mjs --global
 ```
