@@ -8,14 +8,30 @@
     "type": "git",
     "url": "https://github.com/user/ralph-codex"
   },
+  "bin": {
+    "ralph-codex": "./bin/install.mjs"
+  },
+  "files": [
+    "bin/",
+    "hooks/",
+    "commands/",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "postinstall": "echo 'Run: npx ralph-codex --help'"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
   "keywords": [
     "codex",
     "ralph-loop",
+    "autonomous",
     "ai-agent",
     "iterative-development",
-    "stop-hook"
+    "stop-hook",
+    "cross-platform"
   ]
 }
