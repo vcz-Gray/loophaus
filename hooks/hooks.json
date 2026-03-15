@@ -1,0 +1,16 @@
+{
+  "description": "Ralph Loop stop hook for self-referential iterative loops in Codex CLI",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${RALPH_CODEX_ROOT}/hooks/stop-hook.mjs\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
