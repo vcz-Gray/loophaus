@@ -158,6 +158,19 @@ ralph-codex/
 | Transcript parsing | `jq` + `grep`                         | Native Node.js           |
 | Installation       | Plugin marketplace                    | `npx` or manual          |
 
+## Development
+
+```bash
+# Install dev dependencies
+npm install
+
+# Run tests
+npm test
+
+# Run tests in watch mode
+npx vitest
+```
+
 ## License
 
 MIT
