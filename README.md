@@ -34,11 +34,57 @@ node bin/install.mjs --global
 | `--dry-run` | Preview changes without modifying anything |
 | `--force`   | Overwrite existing installation            |
 
-## Usage
+### What Gets Installed
 
-### Start a Ralph Loop
+```
+~/.codex/
+├── plugins/ralph-codex/     # Core plugin files
+├── hooks.json               # Stop hook registration (merged)
+└── skills/
+    ├── ralph-loop/          # /ralph-loop command
+    ├── cancel-ralph/        # /cancel-ralph command
+    └── ralph-interview/     # /ralph-interview command
+```
 
-In Codex CLI, use the slash command:
+## Commands
+
+### `/ralph-interview` — Generate Optimized Commands
+
+**The easiest way to get started.** This interactive skill interviews you about your task and generates a perfectly structured `/ralph-loop` command.
+
+```
+/ralph-interview
+```
+
+**How it works:**
+
+1. Describe your task (e.g., "Add auth to our API")
+2. The interview asks 3–5 targeted questions (scope, success criteria, verification commands, etc.)
+3. It generates a copy-paste-ready `/ralph-loop` command with:
+   - Proper phase separation (analysis vs. implementation)
+   - Self-correcting work cycles (modify → verify → retry)
+   - Escape hatches for when you're stuck
+   - Objective completion criteria
+   - Atomic git commits per work item
+
+**Auto-execute mode:** Add "run immediately" or "바로 실행" to skip the confirmation step:
+
+```
+/ralph-interview Add pagination to the users API, run immediately
+```
+
+After generating, it will ask:
+
+```
+Ready to run?
+- y / yes → Start Phase 1 immediately
+- n / no  → Commands are above, copy-paste when ready
+- edit    → Tell me what to change
+```
+
+### `/ralph-loop` — Run a Loop Directly
+
+If you already know how to write a good prompt:
 
 ```
 /ralph-loop "Build a REST API for todos with CRUD, validation, and tests" --max-iterations 30 --completion-promise "ALL_TESTS_PASS"
@@ -52,54 +98,76 @@ In Codex CLI, use the slash command:
 | `--max-iterations N`        | 20         | Maximum loop iterations (0 = unlimited) |
 | `--completion-promise TEXT` | "TADA"     | Phrase that signals task completion     |
 
-### Cancel a Loop
+### `/cancel-ralph` — Stop the Loop
 
 ```
 /cancel-ralph
 ```
 
-### Generate a Command with Interview (NEW)
-
-Don't know how to write a good ralph-loop prompt? Let the interview skill help:
+## How the Loop Works
 
 ```
-/ralph-interview
+┌─────────────────────────────────────────────┐
+│  /ralph-loop "Build feature X"              │
+│                                             │
+│  ┌──────────┐    ┌──────────┐              │
+│  │  Codex   │───▶│  Works   │              │
+│  │  starts  │    │  on task │              │
+│  └──────────┘    └────┬─────┘              │
+│                       │                     │
+│                       ▼                     │
+│              ┌──────────────┐              │
+│              │ Tries to exit │              │
+│              └───────┬──────┘              │
+│                      │                      │
+│                      ▼                      │
+│            ┌───────────────────┐            │
+│            │    Stop Hook      │            │
+│            │ ┌───────────────┐ │            │
+│            │ │ Max reached?  │─┼──Yes──▶ EXIT
+│            │ │ Promise found?│─┼──Yes──▶ EXIT
+│            │ └───────┬───────┘ │            │
+│            │         No        │            │
+│            │         │         │            │
+│            │    Block exit +   │            │
+│            │  re-inject prompt │            │
+│            └─────────┬─────────┘            │
+│                      │                      │
+│                      ▼                      │
+│              ┌──────────────┐              │
+│              │ Codex sees   │              │
+│              │ previous work│──── loop ────┘
+│              └──────────────┘
 ```
-
-It asks 3–5 targeted questions about your task, then generates an optimized `/ralph-loop` command with proper phases, escape hatches, verification steps, and completion criteria.
-
-### How It Works
-
-1. You invoke `/ralph-loop` with a task prompt
-2. Codex works on the task normally
-3. When Codex tries to exit, the **Stop hook** intercepts
-4. The hook checks: max iterations reached? Completion promise found?
-5. If not done, the hook **blocks the exit** and feeds the same prompt back
-6. Codex sees its previous work in files and git history
-7. Codex continues iterating until completion
 
 ### Completion Promise
 
-To signal task completion, Codex must output the promise phrase wrapped in XML tags:
+To signal task completion, Codex must output the promise phrase in XML tags:
 
 ```
 <promise>ALL_TESTS_PASS</promise>
 ```
 
-The promise is only valid when the statement is genuinely true. The loop is designed to prevent false exits.
+The promise is only valid when the statement is genuinely true. The loop prevents false exits.
 
 ## Prompt Writing Tips
+
+> **Tip:** Use `/ralph-interview` instead of writing prompts manually. It handles all of these patterns for you.
 
 ### 1. Split into Phases
 
 ```
-/ralph-loop "Phase 1: Set up project scaffold. Phase 2: Implement core logic. Phase 3: Add tests. Output <promise>DONE</promise> when all phases complete." --max-iterations 30
+/ralph-loop "Phase 1: Set up project scaffold.
+Phase 2: Implement core logic.
+Phase 3: Add tests.
+Output <promise>DONE</promise> when all phases complete." --max-iterations 30
 ```
 
 ### 2. Objective Completion Criteria
 
 ```
-/ralph-loop "Implement the auth module. Done when: all tests pass, no TypeScript errors, coverage > 80%." --completion-promise "AUTH_COMPLETE" --max-iterations 25
+/ralph-loop "Implement the auth module.
+Done when: all tests pass, no TypeScript errors, coverage > 80%." --completion-promise "AUTH_COMPLETE" --max-iterations 25
 ```
 
 ### 3. Always Set an Escape Hatch
@@ -135,7 +203,7 @@ This removes:
 
 - Plugin files from `~/.codex/plugins/ralph-codex/`
 - Stop hook entry from `~/.codex/hooks.json`
-- Skill files for `/ralph-loop` and `/cancel-ralph`
+- All skill files (`ralph-loop`, `cancel-ralph`, `ralph-interview`)
 - Any active state file
 
 ## Architecture
@@ -143,17 +211,22 @@ This removes:
 ```
 ralph-codex/
 ├── bin/
-│   ├── install.mjs      # Cross-platform installer
-│   └── uninstall.mjs    # Clean uninstaller
+│   ├── install.mjs          # Cross-platform installer
+│   └── uninstall.mjs        # Clean uninstaller
 ├── hooks/
-│   ├── hooks.json        # Hook registration (reference)
-│   └── stop-hook.mjs     # Stop hook — the core loop engine
+│   ├── hooks.json            # Hook registration (reference)
+│   └── stop-hook.mjs         # Stop hook — the core loop engine
 ├── commands/
-│   ├── ralph-loop.md     # /ralph-loop slash command
-│   └── cancel-ralph.md   # /cancel-ralph slash command
+│   ├── ralph-loop.md         # /ralph-loop slash command
+│   └── cancel-ralph.md       # /cancel-ralph slash command
+├── skills/
+│   └── ralph-interview/
+│       └── SKILL.md          # /ralph-interview — interactive command generator
 ├── lib/
-│   ├── paths.mjs         # Cross-platform path utilities
-│   └── state.mjs         # Loop state management
+│   ├── paths.mjs             # Cross-platform path utilities
+│   ├── state.mjs             # Loop state management
+│   └── stop-hook-core.mjs    # Testable stop hook logic
+├── tests/                    # 32 test cases (vitest)
 └── package.json
 ```
 
@@ -167,6 +240,7 @@ ralph-codex/
 | Hook protocol      | `{"decision":"block","reason":"..."}` | Same                     |
 | Transcript parsing | `jq` + `grep`                         | Native Node.js           |
 | Installation       | Plugin marketplace                    | `npx` or manual          |
+| Command generator  | None                                  | `/ralph-interview`       |
 
 ## Development
 
@@ -174,7 +248,7 @@ ralph-codex/
 # Install dev dependencies
 npm install
 
-# Run tests
+# Run tests (32 cases)
 npm test
 
 # Run tests in watch mode
