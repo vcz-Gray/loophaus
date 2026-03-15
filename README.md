@@ -20,7 +20,7 @@ npx @graypark/ralph-codex --global
 ### Option 2: Clone and install
 
 ```bash
-git clone https://github.com/Viewcommz/ralph-codex.git
+git clone https://github.com/vcz-Gray/ralph-codex.git
 cd ralph-codex
 node bin/install.mjs --global
 ```
@@ -57,6 +57,16 @@ In Codex CLI, use the slash command:
 ```
 /cancel-ralph
 ```
+
+### Generate a Command with Interview (NEW)
+
+Don't know how to write a good ralph-loop prompt? Let the interview skill help:
+
+```
+/ralph-interview
+```
+
+It asks 3–5 targeted questions about your task, then generates an optimized `/ralph-loop` command with proper phases, escape hatches, verification steps, and completion criteria.
 
 ### How It Works
 

@@ -152,27 +152,38 @@ async function mergeHooksJson() {
 }
 
 async function installSkills() {
-  const skillNames = ["ralph-loop", "cancel-ralph"];
-  for (const name of skillNames) {
+  // Command-based skills (ralph-loop, cancel-ralph)
+  const commandSkills = ["ralph-loop", "cancel-ralph"];
+  for (const name of commandSkills) {
     const skillDir = join(skillsDir, name);
     const skillMd = join(skillDir, "SKILL.md");
-    const commandSrc = join(pluginDir, "commands", `${name}.md`);
 
     log(">", `Install skill: ${name} -> ${skillDir}`);
 
     if (!dryRun) {
       await mkdir(skillDir, { recursive: true });
 
-      // Read the command markdown and convert to SKILL.md format
       const content = await readFile(
         join(PROJECT_ROOT, "commands", `${name}.md`),
         "utf-8",
       );
 
-      // Replace ${RALPH_CODEX_ROOT} placeholder with actual install path
       const resolved = content.replaceAll("${RALPH_CODEX_ROOT}", pluginDir);
-
       await writeFile(skillMd, resolved, "utf-8");
+    }
+  }
+
+  // Standalone skills (ralph-interview, etc.)
+  const standaloneSkills = ["ralph-interview"];
+  for (const name of standaloneSkills) {
+    const srcDir = join(PROJECT_ROOT, "skills", name);
+    const destDir = join(skillsDir, name);
+
+    log(">", `Install skill: ${name} -> ${destDir}`);
+
+    if (!dryRun) {
+      await mkdir(destDir, { recursive: true });
+      await cp(srcDir, destDir, { recursive: true });
     }
   }
 }

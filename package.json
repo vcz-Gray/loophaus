@@ -1,17 +1,17 @@
 {
   "name": "@graypark/ralph-codex",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Ralph Loop for OpenAI Codex CLI — self-referential iterative development loops via Stop hooks",
   "license": "MIT",
   "author": "graypark",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Viewcommz/ralph-codex"
+    "url": "https://github.com/vcz-Gray/ralph-codex"
   },
-  "homepage": "https://github.com/Viewcommz/ralph-codex#readme",
+  "homepage": "https://github.com/vcz-Gray/ralph-codex#readme",
   "bugs": {
-    "url": "https://github.com/Viewcommz/ralph-codex/issues"
+    "url": "https://github.com/vcz-Gray/ralph-codex/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -24,6 +24,7 @@
     "hooks/",
     "commands/",
     "lib/",
+    "skills/",
     "README.md",
     "LICENSE"
   ],
