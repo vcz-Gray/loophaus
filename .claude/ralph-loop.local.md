@@ -2,103 +2,93 @@
 active: true
 iteration: 1
 session_id:
-max_iterations: 15
-completion_promise: "PHASE2_DONE"
-started_at: "2026-03-15T02:12:55Z"
+max_iterations: 20
+completion_promise: "TADA"
+started_at: "2026-03-15T02:41:04Z"
 ---
 
 ## 목표
 
-ralph-codex 프로젝트에 크로스플랫폼 installer를 추가하고, npm 패키지로 배포 가능하게 만들며, README를 작성한다.
+ralph-codex 프로젝트에 vitest 테스트 스위트를 추가하고, 모든 핵심 로직을 테스트하며, 최종 빌드 검증을 수행한다.
 
 ## 레퍼런스
 
-- Phase 1에서 생성된 ralph-codex/ 디렉토리의 기존 파일들
-- Codex CLI 설정 경로:
-  - Unix: ~/.codex/
-  - Windows: %USERPROFILE%\.codex\ (또는 CODEX_HOME 환경변수)
-- hooks.json은 ~/.codex/hooks.json에 위치해야 함
-- Codex의 slash commands는 ~/.codex/skills/ 또는 프로젝트 .codex/skills/에 SKILL.md로 배치
+- Phase 1~2에서 생성된 ralph-codex/ 디렉토리
+- 핵심 테스트 대상: lib/state.mjs, hooks/stop-hook.mjs, lib/paths.mjs, bin/install.mjs
 
 ## 작업 절차
 
 1. 작업 목록에서 다음 미완료 항목을 선택한다.
 2. 해당 파일을 생성/수정한다.
-3. 검증:
-   - .mjs 파일: node --check <파일>
-   - .json 파일: node -e 'JSON.parse(require("fs").readFileSync("<파일>"))'
-   - install 스크립트: node bin/install.mjs --dry-run (dry-run 모드 구현 필수)
-4. 실패 시 → 에러를 읽고 수정, 다시 3번으로.
+3. npx vitest run 으로 테스트 실행.
+4. 실패 시 → 에러를 읽고 테스트 또는 소스를 수정, 다시 3번으로. 최대 5회 재시도.
 5. 통과 시 → 다음 항목으로.
-6. git add -A && git commit -m ':wrench: <작업 내용 요약>' (설정/도구 관련) 또는 ':memo: <내용>' (문서)
+6. git add -A && git commit -m ':white_check_mark: <테스트 내용>'
 7. 다음 항목으로 돌아가 1번부터 반복.
 
 ## 작업 목록
 
-### 1. 크로스플랫폼 경로 유틸 (lib/paths.mjs)
+### 1. vitest 설정
 
-- getCodexHome(): CODEX_HOME || (Windows ? path.join(os.homedir(), '.codex') : path.join(os.homedir(), '.codex'))
-- getHooksJsonPath(): path.join(getCodexHome(), 'hooks.json')
-- getPluginInstallDir(): path.join(getCodexHome(), 'plugins', 'ralph-codex')
-- isWindows(): process.platform === 'win32'
-- 모든 경로에 path.join 사용 (슬래시 하드코딩 금지)
+- npm install --save-dev vitest
+- vitest.config.mjs 생성 (ESM 모드)
+- package.json scripts.test = 'vitest run'
 
-### 2. Installer (bin/install.mjs)
+### 2. state.mjs 테스트 (tests/state.test.mjs)
 
-- #!/usr/bin/env node 셰뱅
-- --dry-run 플래그: 실제 파일 변경 없이 계획만 출력
-- --global 플래그: ~/.codex/ 에 설치 (기본값)
-- --local 플래그: .codex/ (프로젝트 로컬)에 설치
-- 설치 과정:
-  a. 플러그인 파일을 설치 디렉토리로 복사 (hooks/, commands/, lib/)
-  b. hooks.json 머지: 기존 hooks.json이 있으면 Stop 훅 배열에 추가, 없으면 새로 생성
-  c. stop-hook.mjs의 command 경로를 설치된 실제 경로로 설정
-  d. commands/\*.md를 Codex skills 디렉토리에 심볼릭 링크 또는 복사
-  e. Windows: 심볼릭 링크 대신 항상 복사 사용
-- 성공/실패 메시지 출력 (색상 없이 유니코드 체크/엑스 사용)
-- 기존 설치가 있으면 덮어쓰기 전 확인 (--force로 스킵 가능)
+- readState(): 파일 없을 때 기본값 반환
+- writeState(): 파일 생성 및 내용 검증
+- resetState(): active=false 확인
+- incrementIteration(): 카운터 증가 확인
+- 디렉토리 자동 생성 확인
+- 각 테스트는 임시 디렉토리(os.tmpdir)에서 실행, 테스트 후 정리
 
-### 3. Uninstaller (bin/uninstall.mjs)
+### 3. stop-hook.mjs 로직 테스트 (tests/stop-hook.test.mjs)
 
-- hooks.json에서 ralph-codex 관련 Stop hook 항목만 제거
-- 플러그인 디렉토리 삭제
-- skills에서 ralph-loop/cancel-ralph 관련 파일 제거
-- 상태 파일 삭제
+- stop-hook.mjs에서 핵심 로직을 testable 함수로 분리 (processStopHook(input, stateDir) → { exitCode, stdout, stderr })
+- 테스트 케이스:
+  a. active=false → exit 0, stdout 비어있음
+  b. active=true, iteration < max → decision:block JSON 출력
+  c. active=true, iteration >= max → active를 false로, exit 0
+  d. active=true, transcript에 promise 포함 → active를 false로, exit 0
+  e. 잘못된 stdin JSON → stderr에 에러, exit 0 (non-blocking)
+  f. 상태 파일 없음 → exit 0 (graceful)
 
-### 4. package.json 업데이트
+### 4. paths.mjs 테스트 (tests/paths.test.mjs)
 
-- bin 필드 추가: { 'ralph-codex': './bin/install.mjs' }
-- files 필드: ['bin/', 'hooks/', 'commands/', 'lib/', 'README.md', 'LICENSE']
-- keywords: ['codex', 'ralph-loop', 'autonomous', 'ai-agent', 'cross-platform']
-- scripts: { install: 'echo Run npx ralph-codex install', test: 'vitest run' }
+- getCodexHome(): 기본 경로 반환 확인
+- CODEX_HOME 환경변수 오버라이드 확인
+- 모든 반환 경로에 슬래시 하드코딩 없음 확인 (path.sep 사용 검증)
 
-### 5. README.md
+### 5. install.mjs 테스트 (tests/install.test.mjs)
 
-- 프로젝트 설명: Codex CLI용 크로스플랫폼 Ralph Loop
-- 요구사항: Node.js 18+, Codex CLI v0.114+
-- 설치 방법 2가지: npx ralph-codex install / git clone 후 node bin/install.mjs
-- 사용법: /ralph-loop, /cancel-ralph 커맨드 예시
-- 프롬프트 작성 팁: Phase 분리, 완료 조건 객관화, 탈출구 명시
-- Windows 특이사항: WSL 불필요, Git Bash 불필요
-- 제거 방법: npx ralph-codex uninstall
-- 라이선스: MIT
+- --dry-run: 파일 시스템 변경 없음 확인
+- hooks.json 머지: 기존 hooks가 보존되는지 확인
+- 빈 디렉토리에 fresh install 확인
+- 중복 설치 시 덮어쓰기 동작 확인
 
-### 6. LICENSE (MIT)
+### 6. 최종 검증 & 정리
+
+- npx vitest run 전체 통과 확인
+- node --check 모든 .mjs 파일 일괄 확인
+- package.json 유효성 (npm pack --dry-run 실행)
+- README.md에 테스트 실행 방법 추가
+- git add -A && git commit -m ':tada: v0.1.0 ready'
 
 ## 막혔을 때
 
-3번 반복 후에도 미완료 항목이 남아 있으면:
+5번 반복 후에도 실패하는 테스트가 남아 있으면:
 
-- TODO.md에 문제점 기록
-- 나머지 항목 계속 진행
+- 해당 테스트를 test.skip()으로 마킹
+- KNOWN_ISSUES.md에 실패 원인과 재현 방법 기록
+- 나머지 테스트 계속 진행
 
 ## 완료 조건
 
-- bin/install.mjs --dry-run 이 에러 없이 실행되고 설치 계획을 출력
-- bin/uninstall.mjs 가 node --check 통과
-- lib/paths.mjs 가 node --check 통과
-- package.json에 bin 필드가 존재하고 유효한 JSON
-- README.md가 존재하고 500자 이상
-- git log에 Phase 1 이후 최소 3개 추가 커밋 존재
+- npx vitest run 이 exit code 0으로 완료
+- 최소 15개 테스트 케이스 존재
+- skip된 테스트가 2개 이하
+- npm pack --dry-run 이 에러 없이 실행
+- git log에 Phase 2 이후 최소 3개 추가 커밋 존재
 
-Output <promise>PHASE2_DONE</promise>
+Output <promise>TADA</promise>
