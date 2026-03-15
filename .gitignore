@@ -1,0 +1,4 @@
+node_modules/
+.codex/ralph-loop.state.json
+*.log
+.DS_Store

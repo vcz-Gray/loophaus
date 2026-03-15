@@ -1,0 +1,21 @@
+{
+  "name": "ralph-codex",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Ralph Loop for OpenAI Codex CLI — self-referential iterative development loops via Stop hooks",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/ralph-codex"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "codex",
+    "ralph-loop",
+    "ai-agent",
+    "iterative-development",
+    "stop-hook"
+  ]
+}
