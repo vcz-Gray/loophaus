@@ -150,11 +150,37 @@ To cancel at any time: `/ralph-loop:cancel-ralph`
 
 ## Conversation Flow
 
+### Standard Flow
+
 ```
 [User]      → Describes the task
 [Assistant] → Asks interview questions (1 round, max 5 questions)
 [User]      → Answers
 [Assistant] → Generates Phase plan + command blocks
-[User]      → (optional) Requests changes
-[Assistant] → Delivers revised command blocks
+[Assistant] → Asks: "Run Phase 1 now? (y/n)"
+[User]      → "y"
+[Assistant] → Executes the /ralph-loop:ralph-loop command immediately via Skill tool
 ```
+
+### Quick-Run Flow
+
+If the user includes phrases like "run immediately", "just do it", "바로 실행", "바로 시작", or "--run" in their initial message:
+
+1. Conduct the interview as normal (skip if enough context is provided).
+2. Generate the command blocks.
+3. **Immediately execute Phase 1** without asking for confirmation.
+4. Show the command that was executed so the user can see what's running.
+
+### Post-Generation Action
+
+After generating all command blocks, ALWAYS end with this prompt:
+
+```
+---
+**Ready to run?**
+- **y** / **yes** / **실행** → I'll start Phase 1 immediately
+- **n** / **no** / **아니오** → Commands are above, copy-paste when ready
+- **edit** / **수정** → Tell me what to change
+```
+
+When the user confirms, execute the Phase 1 command by invoking the `ralph-loop:ralph-loop` skill with the generated arguments. For multi-phase work, after each Phase completes, prompt to run the next Phase.

@@ -1,6 +1,6 @@
 {
   "name": "@graypark/ralph-codex",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Ralph Loop for OpenAI Codex CLI — self-referential iterative development loops via Stop hooks",
   "license": "MIT",
