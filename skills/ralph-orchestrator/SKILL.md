@@ -155,7 +155,6 @@ Agent tool parameters:
 - subagent_type: "general-purpose" | "Explore" | "Plan" | "coder-fe" | "coder-be" | etc.
 - isolation: "worktree"  (optional — gives agent an isolated repo copy)
 - run_in_background: true  (for parallel execution)
-- model: "sonnet" | "opus" | "haiku"  (optional model override)
 ```
 
 **Best practices:**
