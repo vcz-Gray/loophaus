@@ -155,19 +155,81 @@ Agent tool parameters:
 - subagent_type: "general-purpose" | "Explore" | "Plan" | "coder-fe" | "coder-be" | etc.
 - isolation: "worktree"  (optional — gives agent an isolated repo copy)
 - run_in_background: true  (for parallel execution)
+- model: "sonnet" | "opus" | "haiku"  (optional model override)
 ```
+
+**Best practices:**
+
+- Use `subagent_type: "Explore"` for read-only scanning — faster and safer
+- Use `isolation: "worktree"` when agents write to files — prevents merge conflicts
+- Launch parallel agents in a single message with multiple Agent tool calls
+- Use `run_in_background: true` for truly independent work streams
 
 ### Codex CLI (experimental)
 
-```
-# Enable multi-agent via config
-[experimental]
-multi_agent = true
+Codex spawns subagents via natural language prompts with keywords: "spawn", "parallel", "delegate", "one agent per".
 
-# In prompt, instruct Codex to use its built-in agent spawning:
-"Spawn a subagent to explore src/api/** for unused endpoints.
- Write results to .ralph/reports/api-scan.md"
 ```
+# Enable in ~/.codex/config.toml
+[agents]
+max_threads = 6          # Max concurrent agent threads (default: 6)
+max_depth = 1            # No grandchild agents (default: 1)
+```
+
+**Custom agent definitions** in `.codex/agents/` (TOML):
+
+```toml
+# .codex/agents/scanner.toml
+name = "scanner"
+description = "Read-only codebase explorer for pattern extraction"
+model = "gpt-5.4-mini"          # Faster model for exploration
+model_reasoning_effort = "low"
+sandbox_mode = "read-only"
+developer_instructions = """
+Scan files for the requested pattern. Report findings with file paths and line numbers.
+Do NOT modify any files.
+"""
+```
+
+**Spawning in prompts:**
+
+```
+"Spawn one agent per service directory to scan for auth issues:
+ 1. scanner on src/frontend/** → .ralph/reports/frontend.md
+ 2. scanner on src/backend/** → .ralph/reports/backend.md
+ 3. scanner on src/auth/** → .ralph/reports/auth.md
+ Wait for all, then summarize findings by severity."
+```
+
+**Batch processing** with `spawn_agents_on_csv`:
+
+```
+# For 100+ similar items, use CSV-driven batch spawning:
+spawn_agents_on_csv:
+  csv_path: .ralph/items.csv
+  instruction: "Review {file_path} for {issue_type}. Return JSON via report_agent_job_result"
+  output_schema: { file: string, severity: string, fix: string }
+  output_csv_path: .ralph/reports/batch-results.csv
+  max_concurrency: 6
+```
+
+### Model Selection Guide (Codex)
+
+| Role                    | Recommended Model   | Reasoning Effort |
+| ----------------------- | ------------------- | ---------------- |
+| Coordinator / main loop | gpt-5.4             | medium           |
+| Explorer / scanner      | gpt-5.4-mini        | low              |
+| Reviewer / security     | gpt-5.4             | high             |
+| Quick iteration / TDD   | gpt-5.3-codex-spark | medium           |
+
+### Key Constraints
+
+| Setting              | Default | Note                                                                    |
+| -------------------- | ------- | ----------------------------------------------------------------------- |
+| `agents.max_threads` | 6       | Hard cap on concurrent agents                                           |
+| `agents.max_depth`   | 1       | No recursive agent spawning                                             |
+| File conflicts       | N/A     | Multiple agents writing same file = conflicts. Use ownership isolation. |
+| Token usage          | Higher  | Each subagent does own inference. Use faster models for workers.        |
 
 ## Report Directory Convention
 

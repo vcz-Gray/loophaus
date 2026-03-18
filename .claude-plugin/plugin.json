@@ -1,25 +1,9 @@
 {
   "name": "ralph-codex",
-  "description": "Cross-platform Ralph Loop with interactive interview, multi-agent orchestration, and smart command generation. Run AI in self-referential iterative loops until task completion.",
+  "description": "Cross-platform Ralph Loop with interactive interview, multi-agent orchestration, and smart command generation for iterative AI development.",
+  "version": "0.4.1",
   "author": {
     "name": "graypark",
-    "email": "vcz.graypark@gmail.com",
-    "url": "https://github.com/vcz-Gray"
-  },
-  "version": "0.4.0",
-  "repository": "https://github.com/vcz-Gray/ralph-codex",
-  "license": "MIT",
-  "keywords": [
-    "ralph-loop",
-    "iterative-development",
-    "multi-agent",
-    "orchestration",
-    "stop-hook",
-    "cross-platform"
-  ],
-  "engines": {
-    "claude-code": ">=1.0.0",
-    "codex-cli": ">=0.114.0"
-  },
-  "compatibility": ["claude-code", "codex-cli"]
+    "email": "vcz.graypark@gmail.com"
+  }
 }
