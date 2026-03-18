@@ -15,6 +15,7 @@ When the user describes a task, conduct a brief interview to gather missing cont
 - **Escape hatches required**: Always specify what to do when stuck after N retries.
 - **Atomic commits**: Instruct a git commit per logical work unit.
 - **Objective completion criteria only**: Never use subjective criteria like "make it good." Use test passes, linter clears, checklist completion, or other verifiable conditions.
+- **Parallel when possible**: Use the ralph-orchestrator patterns to spawn subagents for independent work streams (exploration, multi-service changes, audits).
 
 ## Interview Process
 
@@ -34,6 +35,7 @@ Skip items already covered. Bundle questions — max 3–5 per round, one round 
 | **Constraints**           | Must not break existing tests? Library restrictions?                                 |
 | **When stuck**            | User's preferred fallback (document it? skip? suggest alternative?)                  |
 | **Commit strategy**       | Per-item commits? Bulk? Commit message convention?                                   |
+| **Parallelism potential** | Multiple services? Independent file groups? Broad search needed?                     |
 
 ## Phase Design
 
@@ -43,6 +45,30 @@ Skip items already covered. Bundle questions — max 3–5 per round, one round 
 - **More than 8 items** → Split by nature (e.g., P1/P2, frontend/backend)
 - **Dependencies exist** → Prerequisite work in a prior Phase
 - **5 or fewer simple items** → Single Phase is fine
+
+### When to Use Subagents (via ralph-orchestrator)
+
+Evaluate the task against the ralph-orchestrator decision matrix:
+
+| Factor                         | Score |
+| ------------------------------ | ----- |
+| Files span 3+ directories      | +2    |
+| Items are independent          | +2    |
+| Need full context to decide    | -2    |
+| Order matters                  | -2    |
+| 10+ similar items              | +1    |
+| Needs cross-file understanding | -1    |
+| Multiple services/repos        | +3    |
+
+- **Score >= 3** → Use parallel subagents. Pick from orchestrator patterns:
+  - _Parallel Explore → Sequential Implement_ for research-heavy tasks
+  - _Divide by Ownership_ for multi-service changes
+  - _Fan-Out / Fan-In_ for comprehensive audits
+  - _Scout-Then-Execute_ for unfamiliar codebases
+- **Score 0–2** → Sequential loop, optional scout phase
+- **Score < 0** → Single sequential Ralph Loop
+
+When subagents are recommended, embed subagent spawn instructions directly in the generated ralph-loop prompt using the Agent tool (Claude Code) or experimental multi-agent config (Codex CLI).
 
 ### Recommended max-iterations
 
@@ -91,6 +117,38 @@ After [N] retries on any single item:
 ## Completion Criteria
 - [Objective condition 1]
 - [Objective condition 2]
+- [Verification command] passes
+
+Output <promise>[PROMISE]</promise>" --max-iterations [N] --completion-promise "[PROMISE]"
+```
+
+### With Subagents
+
+When the orchestrator score is >= 3, embed subagent instructions in the prompt:
+
+```
+/ralph-loop:ralph-loop "## Goal
+[Task summary]
+
+## Phase 1 — Parallel Exploration
+Spawn these subagents simultaneously using the Agent tool:
+
+1. Agent 'scan-frontend' (subagent_type: Explore, run_in_background: true):
+   Search src/frontend/** for [pattern]. Write findings to .ralph/reports/frontend.md
+
+2. Agent 'scan-backend' (subagent_type: Explore, run_in_background: true):
+   Search src/backend/** for [pattern]. Write findings to .ralph/reports/backend.md
+
+After ALL agents complete, merge reports into .ralph/reports/merged.md
+
+## Phase 2 — Sequential Implementation
+Read .ralph/reports/merged.md, then for each item:
+1. Apply the fix
+2. Run [verification command]
+3. git commit
+
+## Completion Criteria
+- All items from merged.md addressed
 - [Verification command] passes
 
 Output <promise>[PROMISE]</promise>" --max-iterations [N] --completion-promise "[PROMISE]"

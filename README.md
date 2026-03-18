@@ -1,23 +1,25 @@
 # ralph-codex
 
-Ralph Loop for **OpenAI Codex CLI** — self-referential iterative development loops powered by Stop hooks.
+Self-referential iterative development loops for **Codex CLI** and **Claude Code** — with multi-agent orchestration, interactive command generation, and cross-platform stop hooks.
 
-Ralph Loop is a development methodology where an AI agent works on a task in a continuous loop, seeing its own previous work each iteration, until a completion condition is met. This package brings that capability to Codex CLI with full cross-platform support.
+## What is Ralph Loop?
+
+An AI agent works on a task in a continuous loop, seeing its own previous work each iteration, until a completion condition is met. ralph-codex adds smart orchestration on top: automatic phase splitting, parallel subagent spawning, and an interview-driven command generator.
 
 ## Requirements
 
 - **Node.js** 18+
-- **Codex CLI** v0.114+ (experimental hooks engine required)
+- **Codex CLI** v0.114+ or **Claude Code** (any version with plugin support)
 
 ## Installation
 
-### Option 1: npx (recommended)
+### npx (recommended)
 
 ```bash
 npx @graypark/ralph-codex --global
 ```
 
-### Option 2: Clone and install
+### Git clone
 
 ```bash
 git clone https://github.com/vcz-Gray/ralph-codex.git
@@ -27,76 +29,84 @@ node bin/install.mjs --global
 
 ### Options
 
-| Flag        | Description                                |
-| ----------- | ------------------------------------------ |
-| `--global`  | Install to `~/.codex/` (default)           |
-| `--local`   | Install to `.codex/` in current project    |
-| `--dry-run` | Preview changes without modifying anything |
-| `--force`   | Overwrite existing installation            |
+| Flag        | Description                                      |
+| ----------- | ------------------------------------------------ |
+| `--global`  | Install to `~/.codex/` or `~/.claude/` (default) |
+| `--local`   | Install to `.codex/` in current project          |
+| `--dry-run` | Preview changes without modifying anything       |
+| `--force`   | Overwrite existing installation                  |
 
 ### What Gets Installed
 
 ```
-~/.codex/
-├── plugins/ralph-codex/     # Core plugin files
-├── hooks.json               # Stop hook registration (merged)
+~/.codex/ (or ~/.claude/)
+├── plugins/ralph-codex/          # Core plugin files
+├── hooks.json                    # Stop hook (merged with existing)
 └── skills/
-    ├── ralph-loop/          # /ralph-loop command
-    ├── cancel-ralph/        # /cancel-ralph command
-    └── ralph-interview/     # /ralph-interview command
+    ├── ralph-loop/               # /ralph-loop — run loops
+    ├── cancel-ralph/             # /cancel-ralph — stop loops
+    ├── ralph-interview/          # /ralph-interview — generate commands
+    └── ralph-orchestrator/       # /ralph-orchestrator — multi-agent patterns
 ```
 
 ## Commands
 
-### `/ralph-interview` — Generate Optimized Commands
+### `/ralph-interview` — Smart Command Generator
 
-**The easiest way to get started.** This interactive skill interviews you about your task and generates a perfectly structured `/ralph-loop` command.
+**The recommended way to start.** Interviews you about your task, evaluates whether subagents would help, then generates an optimized command.
 
 ```
 /ralph-interview
 ```
 
-**How it works:**
+1. Describe your task
+2. Answer 3–5 targeted questions (scope, verification, parallelism potential, etc.)
+3. Get a ready-to-run command with phases, escape hatches, and orchestration
 
-1. Describe your task (e.g., "Add auth to our API")
-2. The interview asks 3–5 targeted questions (scope, success criteria, verification commands, etc.)
-3. It generates a copy-paste-ready `/ralph-loop` command with:
-   - Proper phase separation (analysis vs. implementation)
-   - Self-correcting work cycles (modify → verify → retry)
-   - Escape hatches for when you're stuck
-   - Objective completion criteria
-   - Atomic git commits per work item
-
-**Auto-execute mode:** Add "run immediately" or "바로 실행" to skip the confirmation step:
+**Auto-execute:** Add "run immediately" or "바로 실행" to start without confirmation:
 
 ```
-/ralph-interview Add pagination to the users API, run immediately
+/ralph-interview Refactor the auth module across 3 services, run immediately
 ```
 
-After generating, it will ask:
+### `/ralph-orchestrator` — Multi-Agent Patterns
+
+Analyzes your task and recommends the best orchestration strategy:
+
+| Pattern                                     | Best For                                          |
+| ------------------------------------------- | ------------------------------------------------- |
+| **Parallel Explore → Sequential Implement** | Large codebase research + targeted fixes          |
+| **Divide by Ownership**                     | Multi-service changes (frontend + backend + auth) |
+| **Fan-Out / Fan-In**                        | Comprehensive audits (security + perf + a11y)     |
+| **Scout-Then-Execute**                      | Unfamiliar codebases                              |
+| **Pipeline with Checkpoints**               | Complex multi-stage transformations               |
+
+**Decision matrix** — the orchestrator scores your task automatically:
 
 ```
-Ready to run?
-- y / yes → Start Phase 1 immediately
-- n / no  → Commands are above, copy-paste when ready
-- edit    → Tell me what to change
+Files span 3+ directories  → +2
+Items are independent       → +2
+Multiple services/repos     → +3
+10+ similar items           → +1
+Need full context           → -2
+Order matters               → -2
+
+Score >= 3 → Parallel subagents
+Score 0–2  → Sequential + optional scout
+Score < 0  → Single loop
 ```
 
 ### `/ralph-loop` — Run a Loop Directly
 
-If you already know how to write a good prompt:
-
 ```
-/ralph-loop "Build a REST API for todos with CRUD, validation, and tests" --max-iterations 30 --completion-promise "ALL_TESTS_PASS"
+/ralph-loop "Build a REST API" --max-iterations 30 --completion-promise "ALL_TESTS_PASS"
 ```
 
-**Parameters:**
-
-| Parameter                   | Default    | Description                             |
-| --------------------------- | ---------- | --------------------------------------- |
-| `PROMPT`                    | (required) | Task description                        |
-| `--max-iterations N`        | 20         | Maximum loop iterations (0 = unlimited) |
-| `--completion-promise TEXT` | "TADA"     | Phrase that signals task completion     |
+| Parameter                   | Default    | Description                    |
+| --------------------------- | ---------- | ------------------------------ |
+| `PROMPT`                    | (required) | Task description               |
+| `--max-iterations N`        | 20         | Max iterations (0 = unlimited) |
+| `--completion-promise TEXT` | "TADA"     | Phrase that signals completion |
 
 ### `/cancel-ralph` — Stop the Loop
 
@@ -111,7 +121,7 @@ If you already know how to write a good prompt:
 │  /ralph-loop "Build feature X"              │
 │                                             │
 │  ┌──────────┐    ┌──────────┐              │
-│  │  Codex   │───▶│  Works   │              │
+│  │  Agent   │───▶│  Works   │              │
 │  │  starts  │    │  on task │              │
 │  └──────────┘    └────┬─────┘              │
 │                       │                     │
@@ -128,131 +138,125 @@ If you already know how to write a good prompt:
 │            │ │ Promise found?│─┼──Yes──▶ EXIT
 │            │ └───────┬───────┘ │            │
 │            │         No        │            │
-│            │         │         │            │
 │            │    Block exit +   │            │
 │            │  re-inject prompt │            │
 │            └─────────┬─────────┘            │
 │                      │                      │
-│                      ▼                      │
 │              ┌──────────────┐              │
-│              │ Codex sees   │              │
-│              │ previous work│──── loop ────┘
+│              │ Sees previous │──── loop ────┘
+│              │ work in files │
 │              └──────────────┘
 ```
 
-### Completion Promise
+## Multi-Agent Orchestration Example
 
-To signal task completion, Codex must output the promise phrase in XML tags:
-
-```
-<promise>ALL_TESTS_PASS</promise>
-```
-
-The promise is only valid when the statement is genuinely true. The loop prevents false exits.
-
-## Prompt Writing Tips
-
-> **Tip:** Use `/ralph-interview` instead of writing prompts manually. It handles all of these patterns for you.
-
-### 1. Split into Phases
+For a task like "audit and fix auth across frontend, backend, and auth-service":
 
 ```
-/ralph-loop "Phase 1: Set up project scaffold.
-Phase 2: Implement core logic.
-Phase 3: Add tests.
-Output <promise>DONE</promise> when all phases complete." --max-iterations 30
+Phase 1 — Parallel Exploration (3 subagents):
+├── Agent "fe-scan": Search frontend for auth issues → report
+├── Agent "be-scan": Search backend for auth issues → report
+└── Agent "auth-scan": Search auth-service for issues → report
+
+Phase 2 — Merge & Plan:
+└── Ralph Loop: Read all reports → create prioritized fix plan
+
+Phase 3 — Parallel Implementation:
+├── Agent "fe-dev" (worktree): Fix frontend items
+├── Agent "be-dev" (worktree): Fix backend items
+└── Agent "auth-dev" (worktree): Fix auth-service items
+
+Phase 4 — Integration:
+└── Ralph Loop: Merge branches → run full test suite → fix conflicts
 ```
 
-### 2. Objective Completion Criteria
+The `/ralph-interview` skill generates this automatically when it detects multi-service scope.
 
+## Updating
+
+To update to the latest version:
+
+```bash
+npx @graypark/ralph-codex --global --force
 ```
-/ralph-loop "Implement the auth module.
-Done when: all tests pass, no TypeScript errors, coverage > 80%." --completion-promise "AUTH_COMPLETE" --max-iterations 25
-```
 
-### 3. Always Set an Escape Hatch
+Or if installed via git:
 
-Always use `--max-iterations` to prevent infinite loops on impossible tasks.
-
-### 4. Self-Correction Pattern
-
-```
-/ralph-loop "Fix the failing CI pipeline. Run tests, read errors, fix code, repeat." --max-iterations 15 --completion-promise "CI_GREEN"
+```bash
+cd ralph-codex
+git pull
+node bin/install.mjs --global --force
 ```
 
 ## Windows Support
 
-ralph-codex works natively on Windows without WSL or Git Bash:
+Works natively on Windows without WSL or Git Bash:
 
 - All paths use `path.join()` (no hardcoded slashes)
-- The installer copies files instead of symlinks on Windows
+- Installer copies files instead of symlinks on Windows
 - State files use JSON (no Unix-specific formats)
 - Hooks use `node` as the interpreter (cross-platform)
-
-Tested on: Windows 10/11, macOS, Linux (Ubuntu/Debian).
 
 ## Uninstall
 
 ```bash
 npx @graypark/ralph-codex uninstall
-# or
-node bin/uninstall.mjs --global
 ```
 
-This removes:
+## Claude Code Plugin
 
-- Plugin files from `~/.codex/plugins/ralph-codex/`
-- Stop hook entry from `~/.codex/hooks.json`
-- All skill files (`ralph-loop`, `cancel-ralph`, `ralph-interview`)
-- Any active state file
+This package includes a `.claude-plugin/plugin.json` manifest for Claude Code marketplace compatibility. To use as a Claude Code plugin:
+
+1. Clone the repo to your machine
+2. In Claude Code, reference the plugin directory
+3. Skills (`ralph-interview`, `ralph-orchestrator`, etc.) will be auto-discovered
 
 ## Architecture
 
 ```
 ralph-codex/
+├── .claude-plugin/
+│   └── plugin.json              # Claude Code marketplace manifest
 ├── bin/
-│   ├── install.mjs          # Cross-platform installer
-│   └── uninstall.mjs        # Clean uninstaller
+│   ├── install.mjs              # Cross-platform installer
+│   └── uninstall.mjs            # Clean uninstaller
 ├── hooks/
-│   ├── hooks.json            # Hook registration (reference)
-│   └── stop-hook.mjs         # Stop hook — the core loop engine
+│   ├── hooks.json               # Hook registration (reference)
+│   └── stop-hook.mjs            # Stop hook — core loop engine
 ├── commands/
-│   ├── ralph-loop.md         # /ralph-loop slash command
-│   └── cancel-ralph.md       # /cancel-ralph slash command
+│   ├── ralph-loop.md            # /ralph-loop command
+│   └── cancel-ralph.md          # /cancel-ralph command
 ├── skills/
-│   └── ralph-interview/
-│       └── SKILL.md          # /ralph-interview — interactive command generator
+│   ├── ralph-interview/
+│   │   └── SKILL.md             # Interactive command generator
+│   └── ralph-orchestrator/
+│       └── SKILL.md             # Multi-agent orchestration patterns
 ├── lib/
-│   ├── paths.mjs             # Cross-platform path utilities
-│   ├── state.mjs             # Loop state management
-│   └── stop-hook-core.mjs    # Testable stop hook logic
-├── tests/                    # 32 test cases (vitest)
+│   ├── paths.mjs                # Cross-platform path utilities
+│   ├── state.mjs                # Loop state management
+│   └── stop-hook-core.mjs       # Testable stop hook logic
+├── tests/                       # 32 test cases (vitest)
 └── package.json
 ```
 
-## How It Compares to Claude Code's Ralph Loop
+## Comparison
 
-| Feature            | Claude Code (official)                | ralph-codex (this)       |
-| ------------------ | ------------------------------------- | ------------------------ |
-| Runtime            | Bash (sh/perl)                        | Node.js (cross-platform) |
-| State format       | Markdown + YAML frontmatter           | JSON                     |
-| Windows support    | WSL required                          | Native                   |
-| Hook protocol      | `{"decision":"block","reason":"..."}` | Same                     |
-| Transcript parsing | `jq` + `grep`                         | Native Node.js           |
-| Installation       | Plugin marketplace                    | `npx` or manual          |
-| Command generator  | None                                  | `/ralph-interview`       |
+| Feature                | Claude Code (official) | Codex CLI (builtin) | ralph-codex (this)       |
+| ---------------------- | ---------------------- | ------------------- | ------------------------ |
+| Runtime                | Bash (sh/perl)         | Rust                | Node.js (cross-platform) |
+| Windows                | WSL required           | Experimental        | Native                   |
+| Hook protocol          | JSON                   | JSON                | Same                     |
+| Command generator      | None                   | None                | `/ralph-interview`       |
+| Multi-agent            | Manual                 | Experimental        | `/ralph-orchestrator`    |
+| Orchestration patterns | None                   | None                | 5 built-in patterns      |
+| Plugin format          | `.claude-plugin`       | `.codex/skills`     | Both                     |
 
 ## Development
 
 ```bash
-# Install dev dependencies
 npm install
-
-# Run tests (32 cases)
-npm test
-
-# Run tests in watch mode
-npx vitest
+npm test          # 32 test cases
+npx vitest        # watch mode
 ```
 
 ## License

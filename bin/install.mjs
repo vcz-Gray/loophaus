@@ -174,7 +174,7 @@ async function installSkills() {
   }
 
   // Standalone skills (ralph-interview, etc.)
-  const standaloneSkills = ["ralph-interview"];
+  const standaloneSkills = ["ralph-interview", "ralph-orchestrator"];
   for (const name of standaloneSkills) {
     const srcDir = join(PROJECT_ROOT, "skills", name);
     const destDir = join(skillsDir, name);

@@ -1,8 +1,8 @@
 {
   "name": "@graypark/ralph-codex",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
-  "description": "Ralph Loop for OpenAI Codex CLI — self-referential iterative development loops via Stop hooks",
+  "description": "Ralph Loop for Codex CLI & Claude Code — iterative dev loops with multi-agent orchestration, interactive interview, and stop hooks",
   "license": "MIT",
   "author": "graypark",
   "repository": {
@@ -25,6 +25,7 @@
     "commands/",
     "lib/",
     "skills/",
+    ".claude-plugin/",
     "README.md",
     "LICENSE"
   ],
@@ -42,7 +43,10 @@
     "ai-agent",
     "iterative-development",
     "stop-hook",
-    "cross-platform"
+    "cross-platform",
+    "multi-agent",
+    "orchestration",
+    "claude-code"
   ],
   "devDependencies": {
     "vitest": "^4.1.0"

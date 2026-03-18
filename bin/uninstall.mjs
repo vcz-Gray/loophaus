@@ -83,7 +83,12 @@ export async function uninstall({ dryRun = false, local = false } = {}) {
   }
 
   // 3. Remove skill directories
-  const skillNames = ["ralph-loop", "cancel-ralph", "ralph-interview"];
+  const skillNames = [
+    "ralph-loop",
+    "cancel-ralph",
+    "ralph-interview",
+    "ralph-orchestrator",
+  ];
   for (const name of skillNames) {
     const skillDir = join(skillsDir, name);
     if (await fileExists(skillDir)) {
