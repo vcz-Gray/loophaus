@@ -154,9 +154,52 @@ Read .ralph/reports/merged.md, then for each item:
 Output <promise>[PROMISE]</promise>" --max-iterations [N] --completion-promise "[PROMISE]"
 ```
 
-### Multi-Phase
+### Multi-Phase (Pipeline Mode — DEFAULT)
 
-Generate each Phase as a separate `/ralph-loop:ralph-loop` command:
+When a task requires multiple phases, generate a **single** `/ralph-loop:ralph-loop` command with a `queue` in the state file. The stop hook automatically advances to the next phase when a completion promise is detected.
+
+**How to set up pipeline mode:**
+
+Create the state file at `.codex/ralph-loop.state.json` with a queue:
+
+```json
+{
+  "active": true,
+  "prompt": "Phase 1 prompt here...",
+  "completionPromise": "PHASE1_DONE",
+  "maxIterations": 10,
+  "currentIteration": 0,
+  "sessionId": "",
+  "queue": [
+    {
+      "prompt": "Phase 2 prompt here...",
+      "completionPromise": "PHASE2_DONE",
+      "maxIterations": 20
+    },
+    {
+      "prompt": "Phase 3 prompt here...",
+      "completionPromise": "TADA",
+      "maxIterations": 15
+    }
+  ]
+}
+```
+
+Then start with:
+
+```
+/ralph-loop:ralph-loop "Phase 1 prompt here..." --max-iterations 10 --completion-promise "PHASE1_DONE"
+```
+
+When Phase 1 completes, the stop hook will automatically:
+
+1. Detect the completion promise
+2. Load Phase 2 from the queue
+3. Re-inject Phase 2's prompt as a new loop — no user intervention needed
+
+### Multi-Phase (Manual Mode)
+
+If the user chooses manual mode, generate each Phase as a separate `/ralph-loop:ralph-loop` command:
 
 - State Phase number and dependencies explicitly.
 - Link prior Phase outputs as references in the next Phase.
@@ -215,9 +258,9 @@ To cancel at any time: `/ralph-loop:cancel-ralph`
 [Assistant] → Asks interview questions (1 round, max 5 questions)
 [User]      → Answers
 [Assistant] → Generates Phase plan + command blocks
-[Assistant] → Asks: "Run Phase 1 now? (y/n)"
-[User]      → "y"
-[Assistant] → Executes the /ralph-loop:ralph-loop command immediately via Skill tool
+[Assistant] → Asks: "Ready to run?" with options
+[User]      → Chooses an option
+[Assistant] → Executes accordingly
 ```
 
 ### Quick-Run Flow
@@ -226,19 +269,45 @@ If the user includes phrases like "run immediately", "just do it", "바로 실�
 
 1. Conduct the interview as normal (skip if enough context is provided).
 2. Generate the command blocks.
-3. **Immediately execute Phase 1** without asking for confirmation.
-4. Show the command that was executed so the user can see what's running.
+3. **Set up pipeline state file with queue** and **immediately execute Phase 1** without confirmation.
+4. Show the command and queue that was set up so the user can see what's running.
 
 ### Post-Generation Action
 
 After generating all command blocks, ALWAYS end with this prompt:
 
+**For multi-phase tasks:**
+
 ```
 ---
 **Ready to run?**
-- **y** / **yes** / **실행** → I'll start Phase 1 immediately
+- **y** / **yes** / **실행** → Pipeline mode: run all phases automatically (Phase 1 → 2 → 3, no stops between phases)
+- **step** / **단계별** → Manual mode: run Phase 1 only, I'll ask before each next phase
 - **n** / **no** / **아니오** → Commands are above, copy-paste when ready
 - **edit** / **수정** → Tell me what to change
 ```
 
-When the user confirms, execute the Phase 1 command by invoking the `ralph-loop:ralph-loop` skill with the generated arguments. For multi-phase work, after each Phase completes, prompt to run the next Phase.
+**For single-phase tasks:**
+
+```
+---
+**Ready to run?**
+- **y** / **yes** / **실행** → Start immediately
+- **n** / **no** / **아니오** → Command is above, copy-paste when ready
+- **edit** / **수정** → Tell me what to change
+```
+
+### Execution Modes
+
+**Pipeline mode (default for "y"):**
+
+1. Create the state file with the first phase as active and remaining phases in `queue`
+2. Execute Phase 1 via `/ralph-loop:ralph-loop`
+3. When Phase 1 promise is detected, the stop hook automatically loads Phase 2 from queue
+4. Continues until all phases complete — no user intervention between phases
+
+**Manual mode ("step"):**
+
+1. Execute Phase 1 via `/ralph-loop:ralph-loop`
+2. When Phase 1 completes, prompt the user to confirm before starting Phase 2
+3. Repeat for each phase

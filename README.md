@@ -69,6 +69,16 @@ node bin/install.mjs --global
 /ralph-interview Refactor the auth module across 3 services, run immediately
 ```
 
+**Multi-phase pipeline:** When multiple phases are generated, choose how to run:
+
+```
+Ready to run?
+- y    → Pipeline mode: all phases run automatically (1 → 2 → 3)
+- step → Manual mode: run one phase at a time, confirm between each
+- n    → Copy-paste commands yourself
+- edit → Modify the generated commands
+```
+
 ### `/ralph-orchestrator` — Multi-Agent Patterns
 
 Analyzes your task and recommends the best orchestration strategy:
