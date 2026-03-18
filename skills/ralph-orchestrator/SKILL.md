@@ -146,24 +146,6 @@ Execute Phase (Ralph Loop):
 
 ## Subagent Configuration Reference
 
-### Claude Code (Agent tool)
-
-```
-Agent tool parameters:
-- description: "short task description"
-- prompt: "detailed instructions"
-- subagent_type: "general-purpose" | "Explore" | "Plan" | "coder-fe" | "coder-be" | etc.
-- isolation: "worktree"  (optional — gives agent an isolated repo copy)
-- run_in_background: true  (for parallel execution)
-```
-
-**Best practices:**
-
-- Use `subagent_type: "Explore"` for read-only scanning — faster and safer
-- Use `isolation: "worktree"` when agents write to files — prevents merge conflicts
-- Launch parallel agents in a single message with multiple Agent tool calls
-- Use `run_in_background: true` for truly independent work streams
-
 ### Codex CLI (experimental)
 
 Codex spawns subagents via natural language prompts with keywords: "spawn", "parallel", "delegate", "one agent per".

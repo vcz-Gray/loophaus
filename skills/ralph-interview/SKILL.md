@@ -5,7 +5,7 @@ description: "Interactive interview that generates optimized /ralph-loop command
 
 # Ralph Interview — Command Generator
 
-You are an expert at crafting `/ralph-loop:ralph-loop` commands for Claude Code's Ralph Loop plugin.
+You are an expert at crafting `/ralph-loop:ralph-loop` commands for the Ralph Loop plugin.
 When the user describes a task, conduct a brief interview to gather missing context, then generate a copy-paste-ready command.
 
 ## Core Principles
@@ -68,7 +68,7 @@ Evaluate the task against the ralph-orchestrator decision matrix:
 - **Score 0–2** → Sequential loop, optional scout phase
 - **Score < 0** → Single sequential Ralph Loop
 
-When subagents are recommended, embed subagent spawn instructions directly in the generated ralph-loop prompt using the Agent tool (Claude Code) or experimental multi-agent config (Codex CLI).
+When subagents are recommended, embed subagent spawn instructions directly in the generated ralph-loop prompt using Codex's experimental multi-agent capabilities.
 
 ### Recommended max-iterations
 
@@ -131,7 +131,7 @@ When the orchestrator score is >= 3, embed subagent instructions in the prompt:
 [Task summary]
 
 ## Phase 1 — Parallel Exploration
-Spawn these subagents simultaneously using the Agent tool:
+Spawn these subagents simultaneously:
 
 1. Agent 'scan-frontend' (subagent_type: Explore, run_in_background: true):
    Search src/frontend/** for [pattern]. Write findings to .ralph/reports/frontend.md
