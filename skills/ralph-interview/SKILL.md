@@ -268,10 +268,10 @@ To cancel at any time: `/ralph-loop:cancel-ralph`
 If the user includes phrases like "run immediately", "just do it", "run it", "바로 실행", "바로 시작", or "--run" in their initial message:
 
 1. Conduct the interview as normal (skip if enough context is provided).
-2. Generate the command blocks.
-3. For multi-phase: write state file with queue via Bash.
-4. Show the generated command briefly.
-5. Immediately call the Skill tool with skill="ralph-loop:ralph-loop" and the Phase 1 args. Do NOT wait for user confirmation.
+2. Generate the command blocks. Show them briefly.
+3. For multi-phase: write state file with queue via Bash tool.
+4. Make the Skill tool call: skill="ralph-loop:ralph-loop", args=Phase 1 prompt+flags.
+   Do NOT stop after step 3. You MUST proceed to step 4.
 
 ### Post-Generation Action
 
@@ -298,23 +298,44 @@ After generating all command blocks, ALWAYS end with this prompt:
 - **edit** / **수정** → Tell me what to change
 ```
 
-### Execution Modes
+### Execution — MANDATORY TOOL CALL
 
-IMPORTANT: When the user confirms execution, you MUST actually start the loop by calling the Skill tool with skill "ralph-loop:ralph-loop" and the generated args. Do NOT just write a state file or print the command. The Skill tool invocation is what triggers the real loop.
+When the user confirms with "y", "yes", "step", "run", "바로 실행", etc., you MUST perform an actual Skill tool call. This is NON-NEGOTIABLE.
 
-**Pipeline mode (default for "y"):**
+WRONG (do NOT do this):
 
-1. For multi-phase: write the state file with queue via Bash
-2. Call the Skill tool: skill="ralph-loop:ralph-loop", args="<Phase 1 prompt> --max-iterations N --completion-promise PROMISE"
-3. The stop hook handles phase transitions automatically
+- Printing the /ralph-loop command as text
+- Writing a state file and saying "ready"
+- Telling the user to copy-paste
+- Saying "Phase 1 is set up"
+
+RIGHT (you MUST do this):
+
+- Use the Skill tool to invoke "ralph-loop:ralph-loop" with args
+
+The exact tool call you must make:
+
+```
+Use the Skill tool with:
+  skill: "ralph-loop:ralph-loop"
+  args: "<the full prompt>" --max-iterations <N> --completion-promise "<PROMISE>"
+```
+
+This is the same as if the user had typed `/ralph-loop:ralph-loop "..." --max-iterations N --completion-promise "X"` themselves. You are doing it on their behalf.
+
+**Pipeline mode ("y"):**
+
+1. For multi-phase: first write state file with queue via Bash tool
+2. Then IMMEDIATELY make the Skill tool call for Phase 1
+3. Stop hook handles the rest
 
 **Manual mode ("step"):**
 
-1. Call the Skill tool: skill="ralph-loop:ralph-loop", args="<Phase 1 prompt> --max-iterations N --completion-promise PROMISE"
-2. When Phase 1 completes, ask user before calling Skill tool again for Phase 2
+1. IMMEDIATELY make the Skill tool call for Phase 1
+2. After it completes, ask before making the next Skill tool call
 
 **Single-phase ("y"):**
 
-1. Call the Skill tool: skill="ralph-loop:ralph-loop", args="<prompt> --max-iterations N --completion-promise PROMISE"
+1. IMMEDIATELY make the Skill tool call
 
-After the user says "y", "yes", or similar, you MUST immediately use the Skill tool. Do not just describe what would happen. Do not tell the user to copy-paste. Actually invoke the skill.
+If you do not make the Skill tool call, the loop will not start. Writing a state file alone does nothing.
