@@ -1,22 +1,22 @@
 ---
 name: ralph-interview
-description: "Interactive interview that generates optimized /ralph-loop commands with PRD-based phase tracking"
+description: "Interactive interview that generates optimized ralph-loop commands with PRD-based phase tracking. Compatible with ralph-skills prd.json format."
 ---
 
 # Ralph Interview — Command Generator
 
-You are an expert at crafting `/ralph-loop:ralph-loop` commands for the Ralph Loop plugin.
-When the user describes a task, conduct a brief interview to gather missing context, then generate a PRD + progress file pair and a single ralph-loop command.
+You are an expert at crafting ralph-loop commands for the Ralph Loop plugin.
+When the user describes a task, conduct a brief interview to gather missing context, then generate a PRD + progress file pair and a ralph-loop command.
 
 ## Core Principles
 
-- **PRD-driven**: All phases and items live in `.ralph/prd.md`. The loop prompt reads it each iteration.
-- **Progress tracking**: `.ralph/progress.md` tracks what's done. Each iteration reads it to decide what's next.
-- **Self-correcting loops**: Every prompt embeds "modify, verify, retry on failure" cycles.
+- **PRD-driven**: All phases and items live in a PRD file. The loop reads it each iteration.
+- **Progress tracking**: A progress file tracks what's done. Each iteration reads it to decide what's next.
+- **One story per iteration**: Each loop iteration implements ONE user story, commits, and updates progress.
+- **Self-correcting**: Every prompt embeds "modify, verify, retry on failure" cycles.
 - **Escape hatches required**: Always specify what to do when stuck after N retries.
-- **Atomic commits**: Instruct a git commit per logical work unit.
 - **Objective completion criteria only**: No subjective criteria. Use test passes, linter clears, etc.
-- **Parallel when possible**: Use the ralph-orchestrator patterns for independent work streams.
+- **Parallel when possible**: Use ralph-orchestrator patterns for independent work streams.
 
 ## Interview Process
 
@@ -76,134 +76,190 @@ Evaluate the task against the ralph-orchestrator decision matrix:
 | TDD-based feature implementation               | 15-30      |
 | Full refactor / migration                      | 30-50      |
 
-**Rule of thumb:** `item_count x 2 + 5` as baseline.
+**Rule of thumb:** `story_count x 2 + 5` as baseline.
 
-## PRD + Progress Pattern
+## PRD Format: prd.json (ralph-skills compatible)
 
-This is the core mechanism for multi-phase work. Instead of embedding all phases in one prompt or chaining state files, generate two files that the loop reads each iteration.
+Generate PRDs in the **prd.json** format used by ralph-skills. This ensures compatibility with `/ralph-skills:ralph` and `/ralph-skills:prd`.
 
-### .ralph/prd.md
+### prd.json
 
-Contains all phases and work items:
-
-```markdown
-# PRD: [Task Title]
-
-## Phase 1: [Phase Name]
-
-- [ ] Item 1 description
-- [ ] Item 2 description
-- [ ] Item 3 description
-
-## Phase 2: [Phase Name]
-
-- [ ] Item 4 description
-- [ ] Item 5 description
-
-## Completion Criteria
-
-- [Objective condition 1]
-- [Objective condition 2]
-- [Verification command] passes
+```json
+{
+  "project": "[Project Name]",
+  "branchName": "ralph/[feature-name]",
+  "description": "[Feature description]",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "[Story title]",
+      "description": "As a [user], I want [feature] so that [benefit]",
+      "acceptanceCriteria": [
+        "Specific verifiable criterion",
+        "Another criterion",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
 ```
 
-### .ralph/progress.md
+### Story Sizing Rules
 
-Updated by the loop after each completed item:
+Each story MUST be completable in ONE iteration (one context window):
 
-```markdown
-# Progress
+- **Right-sized**: Add a DB column, create one component, update one endpoint
+- **Too big (split)**: "Build entire dashboard", "Add authentication", "Refactor API"
+- **Rule of thumb**: If you can't describe the change in 2-3 sentences, split it
 
-## Completed
+### Story Ordering
 
-- [x] Item 1 — commit abc1234
-- [x] Item 2 — commit def5678
+Stories execute in priority order. Dependencies first:
 
-## Current Phase
+1. Schema/database changes
+2. Backend logic / server actions
+3. UI components that use the backend
+4. Aggregation views / dashboards
 
-Phase 1: [Phase Name]
+### Acceptance Criteria Rules
 
-## Blocked
+- MUST be verifiable, not vague
+- Always include: `"Typecheck passes"` (or equivalent verification)
+- For UI stories: add `"Verify in browser"` or equivalent
+- Bad: "Works correctly", "Good UX"
+- Good: "Button shows confirmation dialog before deleting", "Filter persists in URL params"
 
-(none)
+### progress.txt
 
-## Next
+An append-only log file that tracks iteration history:
 
-Item 3
+```
+## Codebase Patterns
+- [Reusable patterns discovered during iteration]
+
+---
+
+## [Date] - US-001
+- What was implemented
+- Files changed
+- **Learnings for future iterations:**
+  - Patterns discovered
+  - Gotchas encountered
+---
 ```
 
-### The Loop Prompt
+The `## Codebase Patterns` section at the top is read first by each iteration to avoid repeating mistakes.
 
-The ralph-loop prompt is always the same structure:
+## The Loop Prompt
+
+The ralph-loop prompt should follow this standard pattern:
 
 ```
 /ralph-loop:ralph-loop "## Instructions
-1. Read .ralph/prd.md for the full task plan
-2. Read .ralph/progress.md for current status
-3. Pick the next incomplete item (first unchecked item in current phase)
-4. If current phase is complete, advance to next phase and update progress
-5. Implement the item
+1. Read prd.json for the full task plan
+2. Read progress.txt for current status (check Codebase Patterns first)
+3. Check you are on the correct branch from branchName. If not, create it from main.
+4. Pick the highest priority story where passes is false
+5. Implement that ONE story
 6. Run verification: [command]
-7. On failure: read error, fix, retry (max 3 times per item)
-8. On success: update .ralph/progress.md (mark item done, note commit hash)
-9. git add -A && git commit -m '[convention]: [item description]'
-10. If ALL items in ALL phases are done and verification passes, output <promise>TADA</promise>
+7. On failure: read error, fix, retry (max 3 times)
+8. On success: commit with message 'feat: [Story ID] - [Story Title]'
+9. Update prd.json to set passes: true for completed story
+10. Append progress to progress.txt with learnings
+11. If ALL stories have passes: true, output <promise>COMPLETE</promise>
 
 ## When Stuck
-After 3 retries on any item:
-- Add it to Blocked section in .ralph/progress.md with error details
-- Move to next item
-- Document in .ralph/progress.md
+After 3 retries on any story:
+- Set notes field in prd.json with error details
+- Move to next story by priority
+- Document in progress.txt
 
 ## References
 [list of reference files]
 
 ## Verification
-[verification command]" --max-iterations [N] --completion-promise "TADA"
+[verification command]" --max-iterations [N] --completion-promise "COMPLETE"
 ```
 
 ### Why This Works
 
-- **Resumable**: Stop anytime. Progress is on disk. Restart the same command and it picks up where it left off.
-- **Inspectable**: Open `.ralph/progress.md` to see exactly what's done and what's next.
-- **Phase transitions are natural**: The agent reads the PRD, sees Phase 1 is done, moves to Phase 2.
-- **No state file conflicts**: The ralph-loop state file only manages the loop itself, not the task.
+- **Resumable**: Stop anytime. Progress is in prd.json and progress.txt. Restart and it picks up the next `passes: false` story.
+- **Inspectable**: Open prd.json to see status of every story. Open progress.txt for detailed history.
+- **Compatible**: Works with ralph-skills:ralph, ralph-skills:prd, and the official ralph-loop plugin.
 - **Fresh context each iteration**: Agent re-reads PRD and progress, no context rot.
+- **One story per iteration**: Keeps each iteration focused and within context limits.
+
+## Compatibility with Existing Skills
+
+### ralph-skills:prd (marketplace)
+
+- Our prd.json output uses the EXACT same format
+- User can generate PRD with `/ralph-skills:prd`, then use our interview to generate the loop command
+- Or use our interview to generate both PRD and loop command
+
+### ralph-skills:ralph (marketplace)
+
+- Our loop prompt follows the same pattern as ralph-skills prompt.md
+- Same prd.json format, same progress.txt format
+- Same `passes: true/false` tracking, same commit convention
+- Same `<promise>COMPLETE</promise>` completion signal
+
+### Official ralph-loop plugin (claude-plugins-official)
+
+- Our stop hook (Node.js) and the official stop hook (bash) can conflict if both installed
+- If the official ralph-loop plugin is installed, our interview should generate commands using `/ralph-loop:ralph-loop` (official namespace) instead of ours
+- The PRD and progress files work with either stop hook
+
+### Detection and Adaptation
+
+When generating commands, check which ralph-loop is available:
+
+1. If official `ralph-loop:ralph-loop` is in available skills -> use it
+2. If only our ralph-codex is installed -> use our commands
+3. PRD format is the same regardless of which loop engine is used
 
 ## Output Format
 
 Structure the final output as:
 
 1. **Task summary** — One paragraph describing the overall work.
-2. **PRD preview** — Show the .ralph/prd.md content.
-3. **Loop command** — The single ralph-loop command to run.
-4. **Execution prompt** — Ask how to proceed.
+2. **PRD preview** — Show the prd.json content.
+3. **Story count** — "N stories across M phases"
+4. **Loop command** — The ralph-loop command to run.
+5. **Execution prompt** — Ask how to proceed.
 
 ### Example Output
 
 ```
 ## Task Summary
-Fix 3 P1 + 7 P2 responsive issues based on the audit report.
+Add task priority system with database field, UI badges, and filtering.
 
-## PRD (.ralph/prd.md)
-# PRD: Responsive Fixes
-## Phase 1: P1 Critical
-- [ ] Fix header overflow on mobile
-- [ ] Fix nav collapse breakpoint
-- [ ] Fix card grid stacking
+## PRD (prd.json)
+{
+  "project": "TaskApp",
+  "branchName": "ralph/task-priority",
+  "description": "Task priority system",
+  "userStories": [
+    { "id": "US-001", "title": "Add priority field to tasks table", ... },
+    { "id": "US-002", "title": "Display priority badges", ... },
+    { "id": "US-003", "title": "Add priority selector", ... },
+    { "id": "US-004", "title": "Filter by priority", ... }
+  ]
+}
 
-## Phase 2: P2 Important
-- [ ] Adjust sidebar width at 768px
-...
+4 stories, ~10 iterations recommended.
 
 ## Command
 ` ` `
-/ralph-loop:ralph-loop "..." --max-iterations 25 --completion-promise "TADA"
+/ralph-loop:ralph-loop "..." --max-iterations 15 --completion-promise "COMPLETE"
 ` ` `
 
 ---
 **Ready to run?**
-- **y** → Write PRD + progress files and start the loop
+- **y** → Write prd.json + progress.txt and start the loop
 - **n** → Files and command are above, set up manually
 - **edit** → Tell me what to change
 ```
@@ -211,10 +267,11 @@ Fix 3 P1 + 7 P2 responsive issues based on the audit report.
 ## Rules
 
 - **No subjective completion criteria**: Banned phrases: "works well", "looks clean", "properly done."
-- **No prompt without verification**: At least one automated check (tsc, test, lint, build) is mandatory.
+- **No prompt without verification**: At least one automated check is mandatory.
 - **No missing escape hatch**: Every prompt MUST have a "When Stuck" section.
-- **No oversized single Phase**: Do not put more than 8 independent items in one Phase. Split them.
-- **Always generate .ralph/prd.md and .ralph/progress.md**: These are mandatory for multi-phase tasks.
+- **No oversized stories**: Each story must be completable in ONE iteration. Split if too big.
+- **Always use prd.json format**: Ensures compatibility with ralph-skills ecosystem.
+- **Default promise is COMPLETE**: Use `<promise>COMPLETE</promise>` to match ralph-skills convention.
 
 ## Conversation Flow
 
@@ -224,9 +281,9 @@ Fix 3 P1 + 7 P2 responsive issues based on the audit report.
 [User]      -> Describes the task
 [Assistant] -> Asks interview questions (1 round, max 5 questions)
 [User]      -> Answers
-[Assistant] -> Generates PRD + command + asks "Ready to run?"
+[Assistant] -> Generates prd.json + command + asks "Ready to run?"
 [User]      -> "y"
-[Assistant] -> Writes .ralph/ files via Bash, then invokes ralph-loop skill
+[Assistant] -> Writes prd.json + progress.txt, then invokes ralph-loop skill
 ```
 
 ### Quick-Run Flow
@@ -234,15 +291,15 @@ Fix 3 P1 + 7 P2 responsive issues based on the audit report.
 If the user includes "run immediately", "just do it", "run it", "바로 실행", "바로 시작", or "--run":
 
 1. Conduct the interview (skip if enough context).
-2. Generate PRD + command. Show briefly.
-3. Write .ralph/prd.md and .ralph/progress.md via Bash tool.
+2. Generate prd.json + command. Show briefly.
+3. Write prd.json and progress.txt via Bash tool.
 4. Invoke ralph-loop skill immediately. Do NOT stop after step 3.
 
 ### Execution — MANDATORY SKILL INVOCATION
 
 When the user confirms with "y", "yes", "run", etc., you MUST:
 
-1. Create .ralph/ directory and write prd.md + progress.md via Bash tool
+1. Write prd.json and initialize progress.txt via Bash tool
 2. Actually invoke the ralph-loop skill to start the loop
 
 WRONG (do NOT do this):
@@ -253,8 +310,8 @@ WRONG (do NOT do this):
 
 RIGHT (you MUST do this):
 
-- Write the .ralph/ files via Bash
-- Then invoke ralph-loop skill so the loop actually starts
+- Write the files via Bash
+- Then invoke the ralph-loop skill so the loop actually starts
 
 #### How to invoke ralph-loop
 
@@ -263,13 +320,13 @@ RIGHT (you MUST do this):
 ```
 Skill tool call:
   skill: "ralph-loop:ralph-loop"
-  args: "<prompt>" --max-iterations <N> --completion-promise "TADA"
+  args: "<prompt>" --max-iterations <N> --completion-promise "COMPLETE"
 ```
 
 **Codex CLI**: Reference the skill via markdown link:
 
 ```
-[$ralph-loop](~/.codex/skills/ralph-loop/SKILL.md) "<prompt>" --max-iterations <N> --completion-promise "TADA"
+[$ralph-loop](~/.codex/skills/ralph-loop/SKILL.md) "<prompt>" --max-iterations <N> --completion-promise "COMPLETE"
 ```
 
 Note: On Windows use `%USERPROFILE%\.codex\skills\ralph-loop\SKILL.md`. If CODEX_HOME is set, use that.
