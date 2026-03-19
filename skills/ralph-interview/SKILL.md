@@ -6,12 +6,12 @@ description: "Interactive interview that generates optimized ralph-loop commands
 # Ralph Interview — Command Generator
 
 You are an expert at crafting ralph-loop commands for the Ralph Loop plugin.
-When the user describes a task, conduct a brief interview to gather missing context, then generate a PRD + progress file pair and a ralph-loop command.
+When the user describes a task, conduct a brief interview to gather missing context, then generate a PRD, activate the loop, and start working immediately.
 
 ## Core Principles
 
-- **PRD-driven**: All phases and items live in a PRD file. The loop reads it each iteration.
-- **Progress tracking**: A progress file tracks what's done. Each iteration reads it to decide what's next.
+- **PRD-driven**: All phases and items live in prd.json. The loop reads it each iteration.
+- **Progress tracking**: progress.txt tracks what is done. Each iteration reads it to decide what is next.
 - **One story per iteration**: Each loop iteration implements ONE user story, commits, and updates progress.
 - **Self-correcting**: Every prompt embeds "modify, verify, retry on failure" cycles.
 - **Escape hatches required**: Always specify what to do when stuck after N retries.
@@ -113,7 +113,7 @@ Each story MUST be completable in ONE iteration (one context window):
 
 - **Right-sized**: Add a DB column, create one component, update one endpoint
 - **Too big (split)**: "Build entire dashboard", "Add authentication", "Refactor API"
-- **Rule of thumb**: If you can't describe the change in 2-3 sentences, split it
+- **Rule of thumb**: If you cannot describe the change in 2-3 sentences, split it
 
 ### Story Ordering
 
@@ -153,45 +153,6 @@ An append-only log file that tracks iteration history:
 
 The `## Codebase Patterns` section at the top is read first by each iteration to avoid repeating mistakes.
 
-## The Loop Prompt
-
-The ralph-loop prompt should follow this standard pattern:
-
-```
-/ralph-loop:ralph-loop "## Instructions
-1. Read prd.json for the full task plan
-2. Read progress.txt for current status (check Codebase Patterns first)
-3. Check you are on the correct branch from branchName. If not, create it from main.
-4. Pick the highest priority story where passes is false
-5. Implement that ONE story
-6. Run verification: [command]
-7. On failure: read error, fix, retry (max 3 times)
-8. On success: commit with message 'feat: [Story ID] - [Story Title]'
-9. Update prd.json to set passes: true for completed story
-10. Append progress to progress.txt with learnings
-11. If ALL stories have passes: true, output <promise>COMPLETE</promise>
-
-## When Stuck
-After 3 retries on any story:
-- Set notes field in prd.json with error details
-- Move to next story by priority
-- Document in progress.txt
-
-## References
-[list of reference files]
-
-## Verification
-[verification command]" --max-iterations [N] --completion-promise "COMPLETE"
-```
-
-### Why This Works
-
-- **Resumable**: Stop anytime. Progress is in prd.json and progress.txt. Restart and it picks up the next `passes: false` story.
-- **Inspectable**: Open prd.json to see status of every story. Open progress.txt for detailed history.
-- **Compatible**: Works with ralph-skills:ralph, ralph-skills:prd, and the official ralph-loop plugin.
-- **Fresh context each iteration**: Agent re-reads PRD and progress, no context rot.
-- **One story per iteration**: Keeps each iteration focused and within context limits.
-
 ## Compatibility with Existing Skills
 
 ### ralph-skills:prd (marketplace)
@@ -209,60 +170,8 @@ After 3 retries on any story:
 
 ### Official ralph-loop plugin (claude-plugins-official)
 
-- Our stop hook (Node.js) and the official stop hook (bash) can conflict if both installed
-- If the official ralph-loop plugin is installed, our interview should generate commands using `/ralph-loop:ralph-loop` (official namespace) instead of ours
-- The PRD and progress files work with either stop hook
-
-### Detection and Adaptation
-
-When generating commands, check which ralph-loop is available:
-
-1. If official `ralph-loop:ralph-loop` is in available skills -> use it
-2. If only our ralph-codex is installed -> use our commands
-3. PRD format is the same regardless of which loop engine is used
-
-## Output Format
-
-Structure the final output as:
-
-1. **Task summary** — One paragraph describing the overall work.
-2. **PRD preview** — Show the prd.json content.
-3. **Story count** — "N stories across M phases"
-4. **Loop command** — The ralph-loop command to run.
-5. **Execution prompt** — Ask how to proceed.
-
-### Example Output
-
-```
-## Task Summary
-Add task priority system with database field, UI badges, and filtering.
-
-## PRD (prd.json)
-{
-  "project": "TaskApp",
-  "branchName": "ralph/task-priority",
-  "description": "Task priority system",
-  "userStories": [
-    { "id": "US-001", "title": "Add priority field to tasks table", ... },
-    { "id": "US-002", "title": "Display priority badges", ... },
-    { "id": "US-003", "title": "Add priority selector", ... },
-    { "id": "US-004", "title": "Filter by priority", ... }
-  ]
-}
-
-4 stories, ~10 iterations recommended.
-
-## Command
-` ` `
-/ralph-loop:ralph-loop "..." --max-iterations 15 --completion-promise "COMPLETE"
-` ` `
-
----
-**Ready to run?**
-- **y** → Write prd.json + progress.txt and start the loop
-- **n** → Files and command are above, set up manually
-- **edit** → Tell me what to change
-```
+- If the official plugin is installed, this interview works with its stop hook
+- PRD and progress files work with either stop hook
 
 ## Rules
 
@@ -275,60 +184,93 @@ Add task priority system with database field, UI badges, and filtering.
 
 ## Conversation Flow
 
-### Standard Flow
-
 ```
-[User]      -> Describes the task
-[Assistant] -> Asks interview questions (1 round, max 5 questions)
+[User]      -> /ralph-interview "build X feature"
+[Assistant] -> Interview questions (1 round, skip if context is sufficient)
 [User]      -> Answers
-[Assistant] -> Generates prd.json + command + asks "Ready to run?"
+[Assistant] -> Shows PRD briefly, asks "Ready?"
 [User]      -> "y"
-[Assistant] -> Writes prd.json + progress.txt, then invokes ralph-loop skill
+[Assistant] -> Writes files + activates loop + starts US-001 IN THE SAME RESPONSE
 ```
 
-### Quick-Run Flow
+### Quick-Run
 
 If the user includes "run immediately", "just do it", "run it", "바로 실행", "바로 시작", or "--run":
+Skip the "Ready?" prompt. Go straight to activation after showing the PRD briefly.
 
-1. Conduct the interview (skip if enough context).
-2. Generate prd.json + command. Show briefly.
-3. Write prd.json and progress.txt via Bash tool.
-4. Invoke ralph-loop skill immediately. Do NOT stop after step 3.
+## Activation Sequence
 
-### Execution — MANDATORY SKILL INVOCATION
+When the user confirms (or quick-run), execute ALL of these steps in a SINGLE response. Do NOT stop between steps.
 
-When the user confirms with "y", "yes", "run", etc., you MUST:
+### Step 1: Write prd.json via Bash
 
-1. Write prd.json and initialize progress.txt via Bash tool
-2. Actually invoke the ralph-loop skill to start the loop
-
-WRONG (do NOT do this):
-
-- Printing the command as text and stopping
-- Writing files and saying "ready" or "set up"
-- Telling the user to copy-paste
-
-RIGHT (you MUST do this):
-
-- Write the files via Bash
-- Then invoke the ralph-loop skill so the loop actually starts
-
-#### How to invoke ralph-loop
-
-**Claude Code**: Use the Skill tool:
-
-```
-Skill tool call:
-  skill: "ralph-loop:ralph-loop"
-  args: "<prompt>" --max-iterations <N> --completion-promise "COMPLETE"
+```bash
+cat > prd.json << 'EOF'
+{ ... generated PRD ... }
+EOF
 ```
 
-**Codex CLI**: Reference the skill via markdown link:
+### Step 2: Write progress.txt via Bash
 
+```bash
+cat > progress.txt << 'EOF'
+## Codebase Patterns
+(none yet)
+EOF
 ```
-[$ralph-loop](~/.codex/skills/ralph-loop/SKILL.md) "<prompt>" --max-iterations <N> --completion-promise "COMPLETE"
+
+### Step 3: Activate the stop hook via Bash
+
+Write the ralph-loop state file that makes the stop hook intercept session exits:
+
+```bash
+mkdir -p .claude
+cat > .claude/ralph-loop.local.md << 'EOF'
+---
+active: true
+iteration: 1
+session_id:
+max_iterations: <N>
+completion_promise: "COMPLETE"
+started_at: "<now>"
+---
+
+Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first).
+Check correct branch from branchName. If not on it, create from main.
+Pick highest priority story where passes is false.
+Implement that ONE story.
+Run verification: <command>.
+On failure: fix and retry, max 3 times.
+On success: commit 'feat: [Story ID] - [Title]'.
+Update prd.json: set passes to true. Append to progress.txt with learnings.
+If ALL stories pass: <promise>COMPLETE</promise>.
+When stuck: set notes in prd.json, skip to next story.
+EOF
 ```
 
-Note: On Windows use `%USERPROFILE%\.codex\skills\ralph-loop\SKILL.md`. If CODEX_HOME is set, use that.
+### Step 4: START WORKING ON US-001 IMMEDIATELY
 
-If you do not actually invoke the skill, the loop will not start.
+This is the critical step. After writing files, you MUST begin actual work in the SAME response:
+
+1. Read the prd.json you just wrote
+2. Create/checkout the branch from branchName
+3. Pick the first story (US-001)
+4. Implement it — write real code, make real changes
+5. Run the verification command
+6. Commit the changes
+7. Update prd.json (set passes: true)
+8. Append to progress.txt
+
+Do NOT:
+
+- Say "loop is now active" and stop
+- Say "starting work on US-001" and stop
+- Print a summary and wait for user input
+- Ask if the user wants to proceed
+
+DO:
+
+- Actually write code
+- Actually run tests
+- Actually commit
+- The stop hook will handle continuation to US-002 when you finish
