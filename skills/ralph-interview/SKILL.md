@@ -265,12 +265,13 @@ To cancel at any time: `/ralph-loop:cancel-ralph`
 
 ### Quick-Run Flow
 
-If the user includes phrases like "run immediately", "just do it", "바로 실행", "바로 시작", or "--run" in their initial message:
+If the user includes phrases like "run immediately", "just do it", "run it", "바로 실행", "바로 시작", or "--run" in their initial message:
 
 1. Conduct the interview as normal (skip if enough context is provided).
 2. Generate the command blocks.
-3. **Set up pipeline state file with queue** and **immediately execute Phase 1** without confirmation.
-4. Show the command and queue that was set up so the user can see what's running.
+3. For multi-phase: write state file with queue via Bash.
+4. Show the generated command briefly.
+5. Immediately call the Skill tool with skill="ralph-loop:ralph-loop" and the Phase 1 args. Do NOT wait for user confirmation.
 
 ### Post-Generation Action
 
@@ -299,15 +300,21 @@ After generating all command blocks, ALWAYS end with this prompt:
 
 ### Execution Modes
 
+IMPORTANT: When the user confirms execution, you MUST actually start the loop by calling the Skill tool with skill "ralph-loop:ralph-loop" and the generated args. Do NOT just write a state file or print the command. The Skill tool invocation is what triggers the real loop.
+
 **Pipeline mode (default for "y"):**
 
-1. Create the state file with the first phase as active and remaining phases in `queue`
-2. Execute Phase 1 via `/ralph-loop:ralph-loop`
-3. When Phase 1 promise is detected, the stop hook automatically loads Phase 2 from queue
-4. Continues until all phases complete — no user intervention between phases
+1. For multi-phase: write the state file with queue via Bash
+2. Call the Skill tool: skill="ralph-loop:ralph-loop", args="<Phase 1 prompt> --max-iterations N --completion-promise PROMISE"
+3. The stop hook handles phase transitions automatically
 
 **Manual mode ("step"):**
 
-1. Execute Phase 1 via `/ralph-loop:ralph-loop`
-2. When Phase 1 completes, prompt the user to confirm before starting Phase 2
-3. Repeat for each phase
+1. Call the Skill tool: skill="ralph-loop:ralph-loop", args="<Phase 1 prompt> --max-iterations N --completion-promise PROMISE"
+2. When Phase 1 completes, ask user before calling Skill tool again for Phase 2
+
+**Single-phase ("y"):**
+
+1. Call the Skill tool: skill="ralph-loop:ralph-loop", args="<prompt> --max-iterations N --completion-promise PROMISE"
+
+After the user says "y", "yes", or similar, you MUST immediately use the Skill tool. Do not just describe what would happen. Do not tell the user to copy-paste. Actually invoke the skill.
