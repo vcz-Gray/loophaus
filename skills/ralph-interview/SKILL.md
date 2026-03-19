@@ -1,26 +1,27 @@
 ---
 name: ralph-interview
-description: "Interactive interview that generates optimized /ralph-loop commands from task descriptions"
+description: "Interactive interview that generates optimized /ralph-loop commands with PRD-based phase tracking"
 ---
 
 # Ralph Interview — Command Generator
 
 You are an expert at crafting `/ralph-loop:ralph-loop` commands for the Ralph Loop plugin.
-When the user describes a task, conduct a brief interview to gather missing context, then generate a copy-paste-ready command.
+When the user describes a task, conduct a brief interview to gather missing context, then generate a PRD + progress file pair and a single ralph-loop command.
 
 ## Core Principles
 
-- **Phase separation**: Analysis/research and implementation MUST be separate Phases.
-- **Self-correcting loops**: Every prompt must embed a "modify → verify → retry on failure" cycle.
+- **PRD-driven**: All phases and items live in `.ralph/prd.md`. The loop prompt reads it each iteration.
+- **Progress tracking**: `.ralph/progress.md` tracks what's done. Each iteration reads it to decide what's next.
+- **Self-correcting loops**: Every prompt embeds "modify, verify, retry on failure" cycles.
 - **Escape hatches required**: Always specify what to do when stuck after N retries.
 - **Atomic commits**: Instruct a git commit per logical work unit.
-- **Objective completion criteria only**: Never use subjective criteria like "make it good." Use test passes, linter clears, checklist completion, or other verifiable conditions.
-- **Parallel when possible**: Use the ralph-orchestrator patterns to spawn subagents for independent work streams (exploration, multi-service changes, audits).
+- **Objective completion criteria only**: No subjective criteria. Use test passes, linter clears, etc.
+- **Parallel when possible**: Use the ralph-orchestrator patterns for independent work streams.
 
 ## Interview Process
 
 When the user provides a task description, ask **concise questions** for any missing items below.
-Skip items already covered. Bundle questions — max 3–5 per round, one round only if possible.
+Skip items already covered. Bundle questions — max 3-5 per round, one round only if possible.
 
 ### Required Information
 
@@ -41,10 +42,10 @@ Skip items already covered. Bundle questions — max 3–5 per round, one round 
 
 ### When to Split into Phases
 
-- **Research needed first** → Phase 1: Analysis, Phase 2: Implementation
-- **More than 8 items** → Split by nature (e.g., P1/P2, frontend/backend)
-- **Dependencies exist** → Prerequisite work in a prior Phase
-- **5 or fewer simple items** → Single Phase is fine
+- **Research needed first** -> Phase 1: Analysis, Phase 2: Implementation
+- **More than 8 items** -> Split by nature (e.g., P1/P2, frontend/backend)
+- **Dependencies exist** -> Prerequisite work in a prior Phase
+- **5 or fewer simple items** -> Single Phase is fine
 
 ### When to Use Subagents (via ralph-orchestrator)
 
@@ -60,160 +61,123 @@ Evaluate the task against the ralph-orchestrator decision matrix:
 | Needs cross-file understanding | -1    |
 | Multiple services/repos        | +3    |
 
-- **Score >= 3** → Use parallel subagents. Pick from orchestrator patterns:
-  - _Parallel Explore → Sequential Implement_ for research-heavy tasks
-  - _Divide by Ownership_ for multi-service changes
-  - _Fan-Out / Fan-In_ for comprehensive audits
-  - _Scout-Then-Execute_ for unfamiliar codebases
-- **Score 0–2** → Sequential loop, optional scout phase
-- **Score < 0** → Single sequential Ralph Loop
-
-When subagents are recommended, embed subagent spawn instructions directly in the generated ralph-loop prompt using Codex's experimental multi-agent capabilities.
+- **Score >= 3**: Recommend parallel subagents within the ralph-loop prompt
+- **Score 0-2**: Sequential loop, optional scout phase
+- **Score < 0**: Single sequential Ralph Loop
 
 ### Recommended max-iterations
 
 | Task type                                      | Iterations |
 | ---------------------------------------------- | ---------- |
-| Research only (file reads, pattern extraction) | 3–5        |
-| Simple fixes, 1–3 items                        | 5–10       |
-| Medium scope, 4–7 items                        | 10–20      |
-| Large scope, 8+ items                          | 20–30      |
-| TDD-based feature implementation               | 15–30      |
-| Full refactor / migration                      | 30–50      |
+| Research only (file reads, pattern extraction) | 3-5        |
+| Simple fixes, 1-3 items                        | 5-10       |
+| Medium scope, 4-7 items                        | 10-20      |
+| Large scope, 8+ items                          | 20-30      |
+| TDD-based feature implementation               | 15-30      |
+| Full refactor / migration                      | 30-50      |
 
-**Rule of thumb:** `item_count × 2 + 5` as baseline. Add weight for complex verification cycles.
+**Rule of thumb:** `item_count x 2 + 5` as baseline.
 
-## Prompt Template
+## PRD + Progress Pattern
 
-Every generated command MUST follow this structure:
+This is the core mechanism for multi-phase work. Instead of embedding all phases in one prompt or chaining state files, generate two files that the loop reads each iteration.
 
-### Single Phase
+### .ralph/prd.md
 
-```
-/ralph-loop:ralph-loop "## Goal
-[One-line summary of the task]
+Contains all phases and work items:
 
-## References
-[Files, patterns, or docs to consult. Omit section if none.]
+```markdown
+# PRD: [Task Title]
 
-## Work Cycle (repeat for each item)
-1. [How to pick the next incomplete item]
-2. [Specific modification to make]
-3. [Run verification command]
-4. On failure → read the error, fix, go back to step 3. Max N retries.
-5. On pass → [state update action]
-6. git add -A && git commit -m '[convention-compliant message]'
-7. Return to step 1 for the next item.
+## Phase 1: [Phase Name]
 
-## Work Items
-- [Item 1]
-- [Item 2]
-- ...
+- [ ] Item 1 description
+- [ ] Item 2 description
+- [ ] Item 3 description
 
-## When Stuck
-After [N] retries on any single item:
-- [Fallback: document issue / skip with TODO / suggest alternative]
+## Phase 2: [Phase Name]
+
+- [ ] Item 4 description
+- [ ] Item 5 description
 
 ## Completion Criteria
+
 - [Objective condition 1]
 - [Objective condition 2]
 - [Verification command] passes
-
-Output <promise>[PROMISE]</promise>" --max-iterations [N] --completion-promise "[PROMISE]"
 ```
 
-### With Subagents
+### .ralph/progress.md
 
-When the orchestrator score is >= 3, embed subagent instructions in the prompt:
+Updated by the loop after each completed item:
 
-```
-/ralph-loop:ralph-loop "## Goal
-[Task summary]
+```markdown
+# Progress
 
-## Phase 1 — Parallel Exploration
-Spawn these subagents simultaneously:
+## Completed
 
-1. Agent 'scan-frontend' (subagent_type: Explore, run_in_background: true):
-   Search src/frontend/** for [pattern]. Write findings to .ralph/reports/frontend.md
+- [x] Item 1 — commit abc1234
+- [x] Item 2 — commit def5678
 
-2. Agent 'scan-backend' (subagent_type: Explore, run_in_background: true):
-   Search src/backend/** for [pattern]. Write findings to .ralph/reports/backend.md
+## Current Phase
 
-After ALL agents complete, merge reports into .ralph/reports/merged.md
+Phase 1: [Phase Name]
 
-## Phase 2 — Sequential Implementation
-Read .ralph/reports/merged.md, then for each item:
-1. Apply the fix
-2. Run [verification command]
-3. git commit
+## Blocked
 
-## Completion Criteria
-- All items from merged.md addressed
-- [Verification command] passes
+(none)
 
-Output <promise>[PROMISE]</promise>" --max-iterations [N] --completion-promise "[PROMISE]"
+## Next
+
+Item 3
 ```
 
-### Multi-Phase (Pipeline Mode — DEFAULT)
+### The Loop Prompt
 
-When a task requires multiple phases, generate a **single** `/ralph-loop:ralph-loop` command with a `queue` in the state file. The stop hook automatically advances to the next phase when a completion promise is detected.
-
-**How to set up pipeline mode:**
-
-Create the state file at `.codex/ralph-loop.state.json` with a queue:
-
-```json
-{
-  "active": true,
-  "prompt": "Phase 1 prompt here...",
-  "completionPromise": "PHASE1_DONE",
-  "maxIterations": 10,
-  "currentIteration": 0,
-  "sessionId": "",
-  "queue": [
-    {
-      "prompt": "Phase 2 prompt here...",
-      "completionPromise": "PHASE2_DONE",
-      "maxIterations": 20
-    },
-    {
-      "prompt": "Phase 3 prompt here...",
-      "completionPromise": "TADA",
-      "maxIterations": 15
-    }
-  ]
-}
-```
-
-Then start with:
+The ralph-loop prompt is always the same structure:
 
 ```
-/ralph-loop:ralph-loop "Phase 1 prompt here..." --max-iterations 10 --completion-promise "PHASE1_DONE"
+/ralph-loop:ralph-loop "## Instructions
+1. Read .ralph/prd.md for the full task plan
+2. Read .ralph/progress.md for current status
+3. Pick the next incomplete item (first unchecked item in current phase)
+4. If current phase is complete, advance to next phase and update progress
+5. Implement the item
+6. Run verification: [command]
+7. On failure: read error, fix, retry (max 3 times per item)
+8. On success: update .ralph/progress.md (mark item done, note commit hash)
+9. git add -A && git commit -m '[convention]: [item description]'
+10. If ALL items in ALL phases are done and verification passes, output <promise>TADA</promise>
+
+## When Stuck
+After 3 retries on any item:
+- Add it to Blocked section in .ralph/progress.md with error details
+- Move to next item
+- Document in .ralph/progress.md
+
+## References
+[list of reference files]
+
+## Verification
+[verification command]" --max-iterations [N] --completion-promise "TADA"
 ```
 
-When Phase 1 completes, the stop hook will automatically:
+### Why This Works
 
-1. Detect the completion promise
-2. Load Phase 2 from the queue
-3. Re-inject Phase 2's prompt as a new loop — no user intervention needed
-
-### Multi-Phase (Manual Mode)
-
-If the user chooses manual mode, generate each Phase as a separate `/ralph-loop:ralph-loop` command:
-
-- State Phase number and dependencies explicitly.
-- Link prior Phase outputs as references in the next Phase.
-- Use distinct completion promises per Phase (e.g., `PHASE1_DONE`, `PHASE2_DONE`, `TADA`).
+- **Resumable**: Stop anytime. Progress is on disk. Restart the same command and it picks up where it left off.
+- **Inspectable**: Open `.ralph/progress.md` to see exactly what's done and what's next.
+- **Phase transitions are natural**: The agent reads the PRD, sees Phase 1 is done, moves to Phase 2.
+- **No state file conflicts**: The ralph-loop state file only manages the loop itself, not the task.
+- **Fresh context each iteration**: Agent re-reads PRD and progress, no context rot.
 
 ## Output Format
 
 Structure the final output as:
 
 1. **Task summary** — One paragraph describing the overall work.
-2. **Phase rationale** — One line per Phase explaining why it's separated.
-3. **Command blocks** — Copy-paste-ready code blocks.
-4. **Execution order** — Run order and notes between Phases.
-5. **Cancel reminder** — `/ralph-loop:cancel-ralph`
+2. **PRD preview** — Show the .ralph/prd.md content.
+3. **Loop command** — The single ralph-loop command to run.
+4. **Execution prompt** — Ask how to proceed.
 
 ### Example Output
 
@@ -221,121 +185,93 @@ Structure the final output as:
 ## Task Summary
 Fix 3 P1 + 7 P2 responsive issues based on the audit report.
 
-## Phase Rationale
-- Phase 1 (analysis): Extract responsive patterns from codebase to create a reference doc
-- Phase 2 (implementation): Apply fixes in P1 → P2 order using the reference
+## PRD (.ralph/prd.md)
+# PRD: Responsive Fixes
+## Phase 1: P1 Critical
+- [ ] Fix header overflow on mobile
+- [ ] Fix nav collapse breakpoint
+- [ ] Fix card grid stacking
 
-### Phase 1 — Pattern Analysis
+## Phase 2: P2 Important
+- [ ] Adjust sidebar width at 768px
+...
+
+## Command
 ` ` `
-/ralph-loop:ralph-loop "..." --max-iterations 5 --completion-promise "PHASE1_DONE"
+/ralph-loop:ralph-loop "..." --max-iterations 25 --completion-promise "TADA"
 ` ` `
 
-### Phase 2 — P1 + P2 Fixes
-` ` `
-/ralph-loop:ralph-loop "..." --max-iterations 20 --completion-promise "TADA"
-` ` `
-
-## Execution Order
-1. Run Phase 1 → confirm completion
-2. Run Phase 2
-To cancel at any time: `/ralph-loop:cancel-ralph`
+---
+**Ready to run?**
+- **y** → Write PRD + progress files and start the loop
+- **n** → Files and command are above, set up manually
+- **edit** → Tell me what to change
 ```
 
 ## Rules
 
-- **No subjective completion criteria**: Banned phrases — "works well", "looks clean", "properly done."
+- **No subjective completion criteria**: Banned phrases: "works well", "looks clean", "properly done."
 - **No prompt without verification**: At least one automated check (tsc, test, lint, build) is mandatory.
-- **No missing namespace**: Always write `/ralph-loop:ralph-loop` and `/ralph-loop:cancel-ralph`.
-- **No missing escape hatch**: Every Phase MUST have a "When Stuck" section.
-- **No oversized single Phase**: Do not put more than 8 independent items in one Phase. Recommend splitting.
+- **No missing escape hatch**: Every prompt MUST have a "When Stuck" section.
+- **No oversized single Phase**: Do not put more than 8 independent items in one Phase. Split them.
+- **Always generate .ralph/prd.md and .ralph/progress.md**: These are mandatory for multi-phase tasks.
 
 ## Conversation Flow
 
 ### Standard Flow
 
 ```
-[User]      → Describes the task
-[Assistant] → Asks interview questions (1 round, max 5 questions)
-[User]      → Answers
-[Assistant] → Generates Phase plan + command blocks
-[Assistant] → Asks: "Ready to run?" with options
-[User]      → Chooses an option
-[Assistant] → Executes accordingly
+[User]      -> Describes the task
+[Assistant] -> Asks interview questions (1 round, max 5 questions)
+[User]      -> Answers
+[Assistant] -> Generates PRD + command + asks "Ready to run?"
+[User]      -> "y"
+[Assistant] -> Writes .ralph/ files via Bash, then invokes ralph-loop skill
 ```
 
 ### Quick-Run Flow
 
-If the user includes phrases like "run immediately", "just do it", "run it", "바로 실행", "바로 시작", or "--run" in their initial message:
+If the user includes "run immediately", "just do it", "run it", "바로 실행", "바로 시작", or "--run":
 
-1. Conduct the interview as normal (skip if enough context is provided).
-2. Generate the command blocks. Show them briefly.
-3. For multi-phase: write state file with queue via Bash tool.
-4. Make the Skill tool call: skill="ralph-loop:ralph-loop", args=Phase 1 prompt+flags.
-   Do NOT stop after step 3. You MUST proceed to step 4.
+1. Conduct the interview (skip if enough context).
+2. Generate PRD + command. Show briefly.
+3. Write .ralph/prd.md and .ralph/progress.md via Bash tool.
+4. Invoke ralph-loop skill immediately. Do NOT stop after step 3.
 
-### Post-Generation Action
+### Execution — MANDATORY SKILL INVOCATION
 
-After generating all command blocks, ALWAYS end with this prompt:
+When the user confirms with "y", "yes", "run", etc., you MUST:
 
-**For multi-phase tasks:**
-
-```
----
-**Ready to run?**
-- **y** / **yes** / **실행** → Pipeline mode: run all phases automatically (Phase 1 → 2 → 3, no stops between phases)
-- **step** / **단계별** → Manual mode: run Phase 1 only, I'll ask before each next phase
-- **n** / **no** / **아니오** → Commands are above, copy-paste when ready
-- **edit** / **수정** → Tell me what to change
-```
-
-**For single-phase tasks:**
-
-```
----
-**Ready to run?**
-- **y** / **yes** / **실행** → Start immediately
-- **n** / **no** / **아니오** → Command is above, copy-paste when ready
-- **edit** / **수정** → Tell me what to change
-```
-
-### Execution — MANDATORY TOOL CALL
-
-When the user confirms with "y", "yes", "step", "run", "바로 실행", etc., you MUST perform an actual Skill tool call. This is NON-NEGOTIABLE.
+1. Create .ralph/ directory and write prd.md + progress.md via Bash tool
+2. Actually invoke the ralph-loop skill to start the loop
 
 WRONG (do NOT do this):
 
-- Printing the /ralph-loop command as text
-- Writing a state file and saying "ready"
+- Printing the command as text and stopping
+- Writing files and saying "ready" or "set up"
 - Telling the user to copy-paste
-- Saying "Phase 1 is set up"
 
 RIGHT (you MUST do this):
 
-- Use the Skill tool to invoke "ralph-loop:ralph-loop" with args
+- Write the .ralph/ files via Bash
+- Then invoke ralph-loop skill so the loop actually starts
 
-The exact tool call you must make:
+#### How to invoke ralph-loop
+
+**Claude Code**: Use the Skill tool:
 
 ```
-Use the Skill tool with:
+Skill tool call:
   skill: "ralph-loop:ralph-loop"
-  args: "<the full prompt>" --max-iterations <N> --completion-promise "<PROMISE>"
+  args: "<prompt>" --max-iterations <N> --completion-promise "TADA"
 ```
 
-This is the same as if the user had typed `/ralph-loop:ralph-loop "..." --max-iterations N --completion-promise "X"` themselves. You are doing it on their behalf.
+**Codex CLI**: Reference the skill via markdown link:
 
-**Pipeline mode ("y"):**
+```
+[$ralph-loop](~/.codex/skills/ralph-loop/SKILL.md) "<prompt>" --max-iterations <N> --completion-promise "TADA"
+```
 
-1. For multi-phase: first write state file with queue via Bash tool
-2. Then IMMEDIATELY make the Skill tool call for Phase 1
-3. Stop hook handles the rest
+Note: On Windows use `%USERPROFILE%\.codex\skills\ralph-loop\SKILL.md`. If CODEX_HOME is set, use that.
 
-**Manual mode ("step"):**
-
-1. IMMEDIATELY make the Skill tool call for Phase 1
-2. After it completes, ask before making the next Skill tool call
-
-**Single-phase ("y"):**
-
-1. IMMEDIATELY make the Skill tool call
-
-If you do not make the Skill tool call, the loop will not start. Writing a state file alone does nothing.
+If you do not actually invoke the skill, the loop will not start.

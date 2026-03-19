@@ -1,6 +1,6 @@
 {
   "name": "@graypark/ralph-codex",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "type": "module",
   "description": "Ralph Loop for Codex CLI & Claude Code — iterative dev loops with multi-agent orchestration, interactive interview, and stop hooks",
   "license": "MIT",

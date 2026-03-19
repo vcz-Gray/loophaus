@@ -69,15 +69,15 @@ node bin/install.mjs --global
 /ralph-interview Refactor the auth module across 3 services, run immediately
 ```
 
-**Multi-phase pipeline:** When multiple phases are generated, choose how to run:
+**Multi-phase tasks:** The interview generates `.ralph/prd.md` + `.ralph/progress.md` files. The loop reads these each iteration to track phases and items:
 
 ```
-Ready to run?
-- y    → Pipeline mode: all phases run automatically (1 → 2 → 3)
-- step → Manual mode: run one phase at a time, confirm between each
-- n    → Copy-paste commands yourself
-- edit → Modify the generated commands
+.ralph/
+├── prd.md        # All phases and work items
+└── progress.md   # What's done, what's next, what's blocked
 ```
+
+The loop naturally transitions between phases by reading progress. Stop anytime — restart the same command and it picks up where it left off.
 
 ### `/ralph-orchestrator` — Multi-Agent Patterns
 
