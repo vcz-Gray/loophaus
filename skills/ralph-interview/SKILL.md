@@ -224,29 +224,20 @@ EOF
 Write the ralph-loop state file that makes the stop hook intercept session exits:
 
 ```bash
-mkdir -p .claude
-cat > .claude/ralph-loop.local.md << 'EOF'
----
-active: true
-iteration: 1
-session_id:
-max_iterations: <N>
-completion_promise: "COMPLETE"
-started_at: "<now>"
----
-
-Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first).
-Check correct branch from branchName. If not on it, create from main.
-Pick highest priority story where passes is false.
-Implement that ONE story.
-Run verification: <command>.
-On failure: fix and retry, max 3 times.
-On success: commit 'feat: [Story ID] - [Title]'.
-Update prd.json: set passes to true. Append to progress.txt with learnings.
-If ALL stories pass: <promise>COMPLETE</promise>.
-When stuck: set notes in prd.json, skip to next story.
+mkdir -p .codex
+cat > .codex/ralph-loop.state.json << 'EOF'
+{
+  "active": true,
+  "prompt": "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Check correct branch from branchName. If not on it, create from main. Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3 times. On success: commit with feat: [Story ID] - [Title]. Update prd.json: set passes to true. Append to progress.txt with learnings. If ALL stories pass: output <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next story.",
+  "completionPromise": "COMPLETE",
+  "maxIterations": <N>,
+  "currentIteration": 0,
+  "sessionId": ""
+}
 EOF
 ```
+
+Replace `<VERIFY_CMD>` with the actual verification command and `<N>` with the recommended max iterations.
 
 ### Step 4: START WORKING ON US-001 IMMEDIATELY
 
