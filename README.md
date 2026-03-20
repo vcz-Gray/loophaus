@@ -8,13 +8,34 @@
   <a href="https://github.com/vcz-Gray/ralph-codex/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg?style=flat-square" alt="node version" />
   <img src="https://img.shields.io/badge/platform-Codex%20CLI%20%7C%20Claude%20Code-purple.svg?style=flat-square" alt="platform" />
+  <img src="https://img.shields.io/badge/tests-32%20passing-brightgreen.svg?style=flat-square" alt="tests" />
 </p>
 
 <p align="center">
   <b>Iterative AI development loops with PRD-driven task tracking, multi-agent orchestration, and interactive command generation.</b>
+  <br/>
+  <sub>Based on <a href="https://ghuntley.com/ralph/">Geoffrey Huntley's Ralph Wiggum technique</a></sub>
 </p>
 
 ---
+
+## Why ralph-codex?
+
+AI coding agents struggle with:
+
+| Problem                  | What happens                                               |
+| ------------------------ | ---------------------------------------------------------- |
+| **Context rot**          | Long conversations accumulate noise, agent gets confused   |
+| **No checkpoints**       | All-or-nothing execution — can't resume after interruption |
+| **Lost learnings**       | Previous iterations' insights overwritten by new context   |
+| **Completion ambiguity** | Agent says "done" but tests still fail                     |
+
+ralph-codex solves this:
+
+- **Fresh context per iteration** — Each cycle reads PRD + progress from disk, no degradation
+- **Git-enforced safety** — Atomic commits per story, rollback at any point
+- **Append-only learnings** — `progress.txt` accumulates knowledge across iterations
+- **Test-verified completion** — Agent can only exit when `<promise>COMPLETE</promise>` is genuinely true
 
 ## What is Ralph Loop?
 
