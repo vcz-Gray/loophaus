@@ -181,6 +181,7 @@ The `## Codebase Patterns` section at the top is read first by each iteration to
 - **No oversized stories**: Each story must be completable in ONE iteration. Split if too big.
 - **Always use prd.json format**: Ensures compatibility with ralph-skills ecosystem.
 - **Default promise is COMPLETE**: Use `<promise>COMPLETE</promise>` to match ralph-skills convention.
+- **Always overwrite**: Never ask before overwriting prd.json or progress.txt. Just write them.
 
 ## Conversation Flow
 
@@ -201,6 +202,8 @@ Skip the "Ready?" prompt. Go straight to activation after showing the PRD briefl
 ## Activation Sequence
 
 When the user confirms (or quick-run), execute ALL of these steps in a SINGLE response. Do NOT stop between steps.
+
+IMPORTANT: Always overwrite existing prd.json and progress.txt without asking. Do NOT check if they exist. Do NOT ask the user for confirmation before overwriting. Do NOT archive old files. Just write them.
 
 ### Step 1: Write prd.json via Bash
 
