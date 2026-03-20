@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { readState, writeState } from "../lib/state.mjs";
 
 async function readStdin() {
@@ -60,6 +61,19 @@ async function getLastAssistantText(transcriptPath) {
   return "";
 }
 
+async function hasPendingStories(cwd) {
+  const prdPath = join(cwd || process.cwd(), "prd.json");
+  try {
+    const raw = await readFile(prdPath, "utf-8");
+    const prd = JSON.parse(raw);
+    if (!Array.isArray(prd.userStories)) return false;
+    return prd.userStories.some((s) => s.passes === false);
+  } catch {
+    // No prd.json or malformed — cannot determine, treat as no pending
+    return false;
+  }
+}
+
 async function main() {
   let hookInput = {};
   try {
@@ -102,10 +116,9 @@ async function main() {
 
   // Check completion promise in transcript
   if (state.completionPromise) {
-    const transcriptPath = hookInput.transcript_path || null;
     const lastText =
       hookInput.last_assistant_message ||
-      (await getLastAssistantText(transcriptPath));
+      (await getLastAssistantText(hookInput.transcript_path || null));
 
     if (lastText && extractPromise(lastText, state.completionPromise)) {
       process.stderr.write(
@@ -115,6 +128,30 @@ async function main() {
       await writeState(state);
       process.exit(0);
     }
+  }
+
+  // Hybrid stop_hook_active handling:
+  // When stop_hook_active=true, the agent already continued once from a previous block.
+  // Instead of blindly blocking again (which causes forced termination),
+  // check prd.json for pending stories. Only block if there's still work to do.
+  if (hookInput.stop_hook_active === true) {
+    const cwd = hookInput.cwd || process.cwd();
+    const pending = await hasPendingStories(cwd);
+
+    if (!pending) {
+      // All stories done or no prd.json — allow exit
+      process.stderr.write(
+        "Ralph loop: stop_hook_active=true, no pending stories. Allowing exit.\n",
+      );
+      state.active = false;
+      await writeState(state);
+      process.exit(0);
+    }
+
+    // Pending stories exist — continue even though stop_hook_active=true
+    process.stderr.write(
+      "Ralph loop: stop_hook_active=true, but pending stories found. Continuing.\n",
+    );
   }
 
   // Save updated iteration

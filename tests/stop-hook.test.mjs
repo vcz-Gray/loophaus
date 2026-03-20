@@ -250,4 +250,111 @@ describe("processStopHook", () => {
     const output = JSON.parse(result.stdout);
     expect(output.systemMessage).toContain("No completion promise");
   });
+
+  it("continues when stop_hook_active=true and prd.json has pending stories", async () => {
+    // Write a prd.json with pending stories to tempDir
+    const prdPath = join(tempDir, "prd.json");
+    await writeFile(
+      prdPath,
+      JSON.stringify({
+        userStories: [
+          { id: "US-001", passes: true },
+          { id: "US-002", passes: false },
+        ],
+      }),
+      "utf-8",
+    );
+
+    const state = {
+      active: true,
+      prompt: "Work on prd",
+      completionPromise: "COMPLETE",
+      maxIterations: 20,
+      currentIteration: 2,
+      sessionId: "",
+    };
+    const hookInput = { stop_hook_active: true, cwd: tempDir };
+    const result = await processStopHook(
+      hookInput,
+      makeReadState(state),
+      makeWriteState(),
+    );
+    expect(result.stdout).not.toBe("");
+    const output = JSON.parse(result.stdout);
+    expect(output.decision).toBe("block");
+    expect(result.stderr).toContain("pending stories found");
+  });
+
+  it("allows exit when stop_hook_active=true and all stories pass", async () => {
+    const prdPath = join(tempDir, "prd.json");
+    await writeFile(
+      prdPath,
+      JSON.stringify({
+        userStories: [
+          { id: "US-001", passes: true },
+          { id: "US-002", passes: true },
+        ],
+      }),
+      "utf-8",
+    );
+
+    const state = {
+      active: true,
+      prompt: "Work on prd",
+      completionPromise: "COMPLETE",
+      maxIterations: 20,
+      currentIteration: 2,
+      sessionId: "",
+    };
+    const hookInput = { stop_hook_active: true, cwd: tempDir };
+    const result = await processStopHook(
+      hookInput,
+      makeReadState(state),
+      makeWriteState(),
+    );
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("no pending stories");
+    expect(savedState.active).toBe(false);
+  });
+
+  it("allows exit when stop_hook_active=true and no prd.json exists", async () => {
+    const state = {
+      active: true,
+      prompt: "Work on prd",
+      completionPromise: "COMPLETE",
+      maxIterations: 20,
+      currentIteration: 2,
+      sessionId: "",
+    };
+    const hookInput = {
+      stop_hook_active: true,
+      cwd: join(tempDir, "nonexistent"),
+    };
+    const result = await processStopHook(
+      hookInput,
+      makeReadState(state),
+      makeWriteState(),
+    );
+    expect(result.stdout).toBe("");
+    expect(savedState.active).toBe(false);
+  });
+
+  it("blocks normally when stop_hook_active=false", async () => {
+    const state = {
+      active: true,
+      prompt: "Build API",
+      completionPromise: "DONE",
+      maxIterations: 10,
+      currentIteration: 1,
+      sessionId: "",
+    };
+    const hookInput = { stop_hook_active: false };
+    const result = await processStopHook(
+      hookInput,
+      makeReadState(state),
+      makeWriteState(),
+    );
+    const output = JSON.parse(result.stdout);
+    expect(output.decision).toBe("block");
+  });
 });
