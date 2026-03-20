@@ -87,7 +87,6 @@ Generate PRDs in the **prd.json** format used by ralph-skills. This ensures comp
 ```json
 {
   "project": "[Project Name]",
-  "branchName": "ralph/[feature-name]",
   "description": "[Feature description]",
   "userStories": [
     {
@@ -231,7 +230,7 @@ mkdir -p .codex
 cat > .codex/ralph-loop.state.json << 'EOF'
 {
   "active": true,
-  "prompt": "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Check correct branch from branchName. If not on it, create from main. Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3 times. On success: commit with feat: [Story ID] - [Title]. Update prd.json: set passes to true. Append to progress.txt with learnings. If ALL stories pass: output <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next story.",
+  "prompt": "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3 times. On success: commit with feat: [Story ID] - [Title]. Update prd.json: set passes to true. Append to progress.txt with learnings. If ALL stories pass: output <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next story.",
   "completionPromise": "COMPLETE",
   "maxIterations": <N>,
   "currentIteration": 0,
@@ -247,13 +246,12 @@ Replace `<VERIFY_CMD>` with the actual verification command and `<N>` with the r
 This is the critical step. After writing files, you MUST begin actual work in the SAME response:
 
 1. Read the prd.json you just wrote
-2. Create/checkout the branch from branchName
-3. Pick the first story (US-001)
-4. Implement it — write real code, make real changes
-5. Run the verification command
-6. Commit the changes
-7. Update prd.json (set passes: true)
-8. Append to progress.txt
+2. Pick the first story (US-001)
+3. Implement it — write real code, make real changes
+4. Run the verification command
+5. Commit the changes
+6. Update prd.json (set passes: true)
+7. Append to progress.txt
 
 Do NOT:
 
