@@ -88,6 +88,10 @@ export async function uninstall({ dryRun = false, local = false } = {}) {
     "cancel-ralph",
     "ralph-interview",
     "ralph-orchestrator",
+    "ralph-claude-interview",
+    "ralph-claude-loop",
+    "ralph-claude-cancel",
+    "ralph-claude-orchestrator",
   ];
   for (const name of skillNames) {
     const skillDir = join(skillsDir, name);

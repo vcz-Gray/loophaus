@@ -185,6 +185,37 @@ If you already have a PRD or want to write your own prompt:
 /cancel-ralph
 ```
 
+## Claude Code Commands
+
+Separate skill set optimized for Claude Code's native Skill tool and official `ralph-loop` plugin.
+
+| Codex CLI             | Claude Code                  | Description                       |
+| --------------------- | ---------------------------- | --------------------------------- |
+| `/ralph-interview`    | `/ralph-claude-interview`    | PRD generation + loop start       |
+| `/ralph-loop`         | `/ralph-claude-loop`         | Direct loop execution             |
+| `/cancel-ralph`       | `/ralph-claude-cancel`       | Cancel active loop                |
+| `/ralph-orchestrator` | `/ralph-claude-orchestrator` | Multi-agent patterns (Agent tool) |
+
+### `/ralph-claude-interview` — Claude Code Entry Point
+
+```
+/ralph-claude-interview Add user authentication with JWT and login UI
+```
+
+Same interview flow as Codex version, but:
+
+- Uses the **Skill tool** to invoke `ralph-loop:ralph-loop` (official plugin)
+- State file: `.claude/ralph-loop.local.md` (official format)
+- Stop hook: official bash-based hook from `ralph-loop@claude-plugins-official`
+
+### `/ralph-claude-orchestrator` — Agent Tool Patterns
+
+Uses Claude Code's native Agent tool for parallel subagent spawning:
+
+- `subagent_type: "Explore"` for read-only scanning
+- `isolation: "worktree"` for write-safe parallel execution
+- `run_in_background: true` for concurrent agents
+
 ## PRD Format
 
 ralph-codex uses the **ralph-skills compatible** `prd.json` format:
@@ -267,8 +298,12 @@ ralph-codex/
 │   ├── ralph-loop.md                 # /ralph-loop command
 │   └── cancel-ralph.md              # /cancel-ralph command
 ├── skills/
-│   ├── ralph-interview/SKILL.md     # Interactive command generator
-│   └── ralph-orchestrator/SKILL.md  # Multi-agent patterns
+│   ├── ralph-interview/SKILL.md          # Codex: interactive command generator
+│   ├── ralph-orchestrator/SKILL.md       # Codex: multi-agent patterns
+│   ├── ralph-claude-interview/SKILL.md   # Claude: interview + Skill tool invocation
+│   ├── ralph-claude-loop/SKILL.md        # Claude: PRD-driven loop
+│   ├── ralph-claude-cancel/SKILL.md      # Claude: cancel loop
+│   └── ralph-claude-orchestrator/SKILL.md # Claude: Agent tool patterns
 ├── lib/
 │   ├── paths.mjs                     # Cross-platform paths
 │   ├── state.mjs                     # Loop state management
