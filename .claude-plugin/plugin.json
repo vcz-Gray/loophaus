@@ -1,9 +1,11 @@
 {
   "name": "ralph-codex",
-  "description": "Cross-platform Ralph Loop with interactive interview, multi-agent orchestration, and smart command generation for iterative AI development.",
-  "version": "0.4.1",
+  "description": "PRD-driven Ralph Loop with interactive interview, multi-agent orchestration, and stop hooks for iterative AI development.",
+  "version": "1.1.0",
   "author": {
     "name": "graypark",
     "email": "vcz.graypark@gmail.com"
-  }
+  },
+  "skills": "./skills/",
+  "keywords": ["ralph", "loop", "prd", "automation", "agent", "orchestration"]
 }

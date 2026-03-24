@@ -1,30 +1,18 @@
 ---
-name: cancel-ralph
-description: "Cancel the active Ralph Loop"
+description: "Cancel active Ralph Loop"
+allowed-tools: ["Bash(test -f .claude/ralph-loop.local.md:*)", "Bash(rm .claude/ralph-loop.local.md)", "Read(.claude/ralph-loop.local.md)"]
+hide-from-slash-command-tool: "true"
 ---
 
 # Cancel Ralph
 
 To cancel the Ralph loop:
 
-1. Check if the state file exists at `.codex/ralph-loop.state.json`.
+1. Check if `.claude/ralph-loop.local.md` exists using Bash: `test -f .claude/ralph-loop.local.md && echo "EXISTS" || echo "NOT_FOUND"`
 
-2. **If NOT found**: Say "No active Ralph loop found."
+2. **If NOT_FOUND**: Say "No active Ralph loop found."
 
-3. **If found**:
-   - Read the state file to get `currentIteration`.
-   - Set `active` to `false` by running:
-
-   ```bash
-   node -e "
-   import { readState, writeState } from '${RALPH_CODEX_ROOT}/lib/state.mjs';
-   const state = await readState();
-   const iter = state.currentIteration;
-   state.active = false;
-   await writeState(state);
-   console.log('Cancelled Ralph loop at iteration ' + iter);
-   "
-   ```
-
-   Alternatively, edit `.codex/ralph-loop.state.json` directly and set `"active": false`.
-   - Report: "Cancelled Ralph loop (was at iteration N)."
+3. **If EXISTS**:
+   - Read `.claude/ralph-loop.local.md` to get the current iteration number from the `iteration:` field
+   - Remove the file using Bash: `rm .claude/ralph-loop.local.md`
+   - Report: "Cancelled Ralph loop (was at iteration N)" where N is the iteration value

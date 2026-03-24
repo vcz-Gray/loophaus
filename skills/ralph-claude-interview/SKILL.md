@@ -13,8 +13,8 @@ Interview the user, generate prd.json, then invoke the official ralph-loop plugi
 - **PRD-driven**: prd.json (ralph-skills compatible) tracks all stories
 - **progress.txt**: Append-only log with Codebase Patterns section
 - **One story per iteration**: Each loop cycle implements ONE story
-- **Official stop hook**: Uses `ralph-loop:ralph-loop` — the official Claude Code plugin
-- **Skill tool invocation**: Start the loop via the Skill tool, not by printing commands
+- **Self-contained stop hook**: Uses ralph-codex's own bash stop hook
+- **Skill tool invocation**: Start the loop via the Skill tool (`ralph-codex:ralph-loop`)
 
 ## Interview Process
 
@@ -142,13 +142,13 @@ cat > progress.txt << 'EOF'
 EOF
 ```
 
-### Step 3: Invoke the official ralph-loop via Skill tool
+### Step 3: Invoke ralph-loop via Skill tool
 
 This is the critical step. You MUST use the Skill tool to start the loop:
 
 ```
 Skill tool call:
-  skill: "ralph-loop:ralph-loop"
+  skill: "ralph-codex:ralph-loop"
   args: "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3. On success: commit 'feat: [Story ID] - [Title]'. Update prd.json passes to true. Append to progress.txt with learnings. If ALL stories pass: <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next." --max-iterations <N> --completion-promise "COMPLETE"
 ```
 
@@ -166,10 +166,10 @@ WRONG:
 
 RIGHT:
 
-- Use the Skill tool with skill="ralph-loop:ralph-loop" and the generated args
-- This actually starts the loop — the official stop hook takes over from there
+- Use the Skill tool with skill="ralph-codex:ralph-loop" and the generated args
+- This starts the loop — ralph-codex's stop hook takes over from there
 
-The official ralph-loop plugin will:
+ralph-codex will:
 
 1. Run the setup script (creates `.claude/ralph-loop.local.md`)
 2. Inject the prompt into the session

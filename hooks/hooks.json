@@ -1,13 +1,12 @@
 {
-  "description": "Ralph Loop stop hook for self-referential iterative loops in Codex CLI",
+  "description": "Ralph Codex stop hook for self-referential iterative loops",
   "hooks": {
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${RALPH_CODEX_ROOT}/hooks/stop-hook.mjs\"",
-            "timeout": 30
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh"
           }
         ]
       }

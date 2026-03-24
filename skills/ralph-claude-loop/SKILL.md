@@ -9,13 +9,13 @@ Start a Ralph Loop optimized for Claude Code. This skill sets up the loop state,
 
 ## Prerequisites
 
-- The official `ralph-loop` plugin must be installed (`/install ralph-loop@claude-plugins-official`)
-- A `prd.json` file must exist in the project root (generate one with `/ralph-claude-interview`)
+- The `ralph-codex` plugin must be installed
+- A `prd.json` file must exist in the project root (generate one with `/ralph-interview`)
 
 ## How It Works
 
-1. This skill writes `.claude/ralph-loop.local.md` (the official state file format)
-2. The official stop hook reads this file and intercepts session exits
+1. This skill writes `.claude/ralph-loop.local.md` (the state file)
+2. ralph-codex's stop hook reads this file and intercepts session exits
 3. Each iteration: read prd.json → pick next story → implement → verify → commit → update
 4. When all stories pass: output `<promise>COMPLETE</promise>`
 
