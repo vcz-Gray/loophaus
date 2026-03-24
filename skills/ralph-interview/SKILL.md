@@ -139,6 +139,10 @@ An append-only log file that tracks iteration history:
 ## Codebase Patterns
 - [Reusable patterns discovered during iteration]
 
+## Discoveries
+- [US-008] Added during US-003: Missing input validation for edge case X
+- [US-009] Added during US-005: Need migration script for schema change
+
 ---
 
 ## [Date] - US-001
@@ -147,10 +151,13 @@ An append-only log file that tracks iteration history:
 - **Learnings for future iterations:**
   - Patterns discovered
   - Gotchas encountered
+- **Discoveries:** (if any new stories were added)
+  - US-008: [reason] — found while implementing [specific part]
 ---
 ```
 
 The `## Codebase Patterns` section at the top is read first by each iteration to avoid repeating mistakes.
+The `## Discoveries` section tracks all dynamically added stories with rationale.
 
 ## Compatibility with Existing Skills
 
@@ -230,7 +237,7 @@ mkdir -p .codex
 cat > .codex/ralph-loop.state.json << 'EOF'
 {
   "active": true,
-  "prompt": "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3 times. On success: commit with feat: [Story ID] - [Title]. Update prd.json: set passes to true. Append to progress.txt with learnings. If ALL stories pass: output <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next story.",
+  "prompt": "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3 times. On success: commit with feat: [Story ID] - [Title]. Update prd.json: set passes to true. DISCOVERY PHASE: Review what you just built — did you find hidden complexity, missing edge cases, new dependencies, or broken assumptions? If YES: add new stories to prd.json (next sequential ID, passes: false), log discovery in progress.txt under Discoveries section. If NO: just append learnings to progress.txt. If ALL stories (including new ones) pass: output <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next story.",
   "completionPromise": "COMPLETE",
   "maxIterations": <N>,
   "currentIteration": 0,

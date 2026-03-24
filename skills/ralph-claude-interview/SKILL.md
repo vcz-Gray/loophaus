@@ -149,7 +149,7 @@ This is the critical step. You MUST use the Skill tool to start the loop:
 ```
 Skill tool call:
   skill: "ralph-codex:ralph-loop"
-  args: "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3. On success: commit 'feat: [Story ID] - [Title]'. Update prd.json passes to true. Append to progress.txt with learnings. If ALL stories pass: <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next." --max-iterations <N> --completion-promise "COMPLETE"
+  args: "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3. On success: commit 'feat: [Story ID] - [Title]'. Update prd.json passes to true. DISCOVERY PHASE: Review what you just built — did you find hidden complexity, missing edge cases, new dependencies, or broken assumptions? If YES: add new stories to prd.json (next sequential ID, passes: false), log discovery in progress.txt under Discoveries section, and increase max_iterations in .claude/ralph-loop.local.md if needed (formula: current_iteration + remaining*2 + 3). If NO: just append learnings to progress.txt. If ALL stories (including new ones) pass: <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next." --max-iterations <N> --completion-promise "COMPLETE"
 ```
 
 Replace `<VERIFY_CMD>` and `<N>` with actual values.
