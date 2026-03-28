@@ -95,7 +95,9 @@ async function installForClaude() {
   const cacheDir = getClaudePluginCacheDir();
 
   console.log("");
-  console.log(`ralph-codex installer — Claude Code${dryRun ? " (DRY RUN)" : ""}`);
+  console.log(
+    `ralph-codex installer — Claude Code${dryRun ? " (DRY RUN)" : ""}`,
+  );
   console.log(`Target: ${cacheDir}`);
   console.log("");
 
@@ -110,7 +112,14 @@ async function installForClaude() {
 
   // Step 1: Copy plugin files to cache
   console.log("[1/4] Copying plugin files...");
-  const dirs = [".claude-plugin", "commands", "hooks", "scripts", "skills", "lib"];
+  const dirs = [
+    ".claude-plugin",
+    "commands",
+    "hooks",
+    "scripts",
+    "skills",
+    "lib",
+  ];
   for (const dir of dirs) {
     const src = join(PROJECT_ROOT, dir);
     if (!(await fileExists(src))) continue;
@@ -163,11 +172,19 @@ async function installForClaude() {
 
   log(">", `Register ${MARKETPLACE_NAME} in known_marketplaces.json`);
   if (!dryRun) {
-    await writeFile(knownMarketplacesPath, JSON.stringify(knownMarketplaces, null, 2), "utf-8");
+    await writeFile(
+      knownMarketplacesPath,
+      JSON.stringify(knownMarketplaces, null, 2),
+      "utf-8",
+    );
   }
 
   // Create marketplace directory with marketplace.json
-  const marketplaceJsonPath = join(marketplaceDir, ".claude-plugin", "marketplace.json");
+  const marketplaceJsonPath = join(
+    marketplaceDir,
+    ".claude-plugin",
+    "marketplace.json",
+  );
   log(">", `Create marketplace.json at ${marketplaceDir}`);
   if (!dryRun) {
     await mkdir(join(marketplaceDir, ".claude-plugin"), { recursive: true });
@@ -189,7 +206,13 @@ async function installForClaude() {
               description:
                 "Iterative AI development loops with PRD tracking and multi-agent orchestration",
               version: "1.1.0",
-              keywords: ["ralph", "loop", "prd", "orchestration", "claude-code"],
+              keywords: [
+                "ralph",
+                "loop",
+                "prd",
+                "orchestration",
+                "claude-code",
+              ],
               category: "productivity",
               skills: "./skills/",
             },
@@ -202,7 +225,10 @@ async function installForClaude() {
     );
 
     // Copy plugin.json to marketplace root too
-    await cp(join(PROJECT_ROOT, ".claude-plugin", "plugin.json"), join(marketplaceDir, ".claude-plugin", "plugin.json"));
+    await cp(
+      join(PROJECT_ROOT, ".claude-plugin", "plugin.json"),
+      join(marketplaceDir, ".claude-plugin", "plugin.json"),
+    );
   }
 
   // Step 3: Update installed_plugins.json
@@ -234,7 +260,11 @@ async function installForClaude() {
 
   log(">", `Register ${PLUGIN_KEY} in installed_plugins.json`);
   if (!dryRun) {
-    await writeFile(installedPluginsPath, JSON.stringify(installedPlugins, null, 2), "utf-8");
+    await writeFile(
+      installedPluginsPath,
+      JSON.stringify(installedPlugins, null, 2),
+      "utf-8",
+    );
   }
 
   // Step 4: Enable plugin in settings.json
@@ -282,7 +312,9 @@ async function installForClaude() {
     console.log("  Run /reload-plugins in Claude Code to activate.");
     console.log("");
     console.log("  Usage:");
-    console.log('    /ralph-loop "Build a REST API" --max-iterations 20 --completion-promise "DONE"');
+    console.log(
+      '    /ralph-loop "Build a REST API" --max-iterations 20 --completion-promise "DONE"',
+    );
     console.log("    /cancel-ralph");
     console.log("    /help    (ralph-codex help)");
     console.log("");
@@ -303,7 +335,9 @@ async function installForClaude() {
 async function installForCodex() {
   const codexHome = localMode ? getLocalCodexDir() : getCodexHome();
   const pluginDir = localMode ? getLocalPluginDir() : getPluginInstallDir();
-  const hooksJsonPath = localMode ? getLocalHooksJsonPath() : getHooksJsonPath();
+  const hooksJsonPath = localMode
+    ? getLocalHooksJsonPath()
+    : getHooksJsonPath();
   const skillsDir = localMode ? getLocalSkillsDir() : getSkillsDir();
 
   console.log("");
@@ -447,7 +481,9 @@ async function installForCodex() {
     console.log("    /cancel-ralph");
     console.log("");
     console.log("  To uninstall:");
-    console.log("    npx @graypark/ralph-codex uninstall" + (localMode ? " --local" : ""));
+    console.log(
+      "    npx @graypark/ralph-codex uninstall" + (localMode ? " --local" : ""),
+    );
   }
   console.log("");
 }

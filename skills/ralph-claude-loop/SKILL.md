@@ -110,10 +110,13 @@ After setup, immediately begin working:
 ### max_iterations Auto-Adjustment
 
 When adding N new stories, update max_iterations:
+
 ```
 new_max = current_iteration + (remaining_stories + new_stories) * 2 + 3
 ```
+
 Only increase, never decrease. Update via:
+
 ```bash
 sed -i '' "s/^max_iterations: .*/max_iterations: $NEW_MAX/" .claude/ralph-loop.local.md
 ```

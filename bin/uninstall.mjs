@@ -32,7 +32,9 @@ async function fileExists(p) {
 
 async function uninstallClaude({ dryRun = false } = {}) {
   console.log("");
-  console.log(`ralph-codex uninstaller — Claude Code${dryRun ? " (DRY RUN)" : ""}`);
+  console.log(
+    `ralph-codex uninstaller — Claude Code${dryRun ? " (DRY RUN)" : ""}`,
+  );
   console.log("");
 
   // 1. Remove plugin cache directory
@@ -57,7 +59,11 @@ async function uninstallClaude({ dryRun = false } = {}) {
         delete data.plugins[pluginKey];
         log(">", `Remove ${pluginKey} from installed_plugins.json`);
         if (!dryRun) {
-          await writeFile(installedPluginsPath, JSON.stringify(data, null, 2), "utf-8");
+          await writeFile(
+            installedPluginsPath,
+            JSON.stringify(data, null, 2),
+            "utf-8",
+          );
         }
       } else {
         log("-", "Plugin not found in installed_plugins.json");
@@ -74,11 +80,18 @@ async function uninstallClaude({ dryRun = false } = {}) {
       const raw = await readFile(settingsPath, "utf-8");
       const settings = JSON.parse(raw);
       const pluginKey = "ralph-codex@ralph-codex-marketplace";
-      if (settings.enabledPlugins && settings.enabledPlugins[pluginKey] !== undefined) {
+      if (
+        settings.enabledPlugins &&
+        settings.enabledPlugins[pluginKey] !== undefined
+      ) {
         delete settings.enabledPlugins[pluginKey];
         log(">", `Disable ${pluginKey} in settings.json`);
         if (!dryRun) {
-          await writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+          await writeFile(
+            settingsPath,
+            JSON.stringify(settings, null, 2),
+            "utf-8",
+          );
         }
       }
     } catch {
@@ -97,7 +110,11 @@ async function uninstallClaude({ dryRun = false } = {}) {
   console.log("");
 }
 
-export async function uninstall({ dryRun = false, local = false, claude = false } = {}) {
+export async function uninstall({
+  dryRun = false,
+  local = false,
+  claude = false,
+} = {}) {
   if (claude) {
     return uninstallClaude({ dryRun });
   }
@@ -107,7 +124,9 @@ export async function uninstall({ dryRun = false, local = false, claude = false 
   const skillsDir = local ? getLocalSkillsDir() : getSkillsDir();
 
   console.log("");
-  console.log(`ralph-codex uninstaller — Codex CLI${dryRun ? " (DRY RUN)" : ""}`);
+  console.log(
+    `ralph-codex uninstaller — Codex CLI${dryRun ? " (DRY RUN)" : ""}`,
+  );
   console.log("");
 
   // 1. Remove ralph-codex entries from hooks.json

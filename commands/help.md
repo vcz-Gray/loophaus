@@ -11,6 +11,7 @@ Please explain the following to the user:
 Ralph Loop implements the Ralph Wiggum technique — an iterative development methodology based on continuous AI loops, pioneered by Geoffrey Huntley.
 
 **Core concept:**
+
 ```bash
 while :; do
   cat PROMPT.md | claude-code --continue
@@ -20,6 +21,7 @@ done
 The same prompt is fed to Claude repeatedly. The "self-referential" aspect comes from Claude seeing its own previous work in the files and git history, not from feeding output back as input.
 
 **Each iteration:**
+
 1. Claude receives the SAME prompt
 2. Works on the task, modifying files
 3. Tries to exit
@@ -34,12 +36,14 @@ The same prompt is fed to Claude repeatedly. The "self-referential" aspect comes
 Start a Ralph loop in your current session.
 
 **Usage:**
+
 ```
 /ralph-loop "Refactor the cache layer" --max-iterations 20
 /ralph-loop "Add tests" --completion-promise "TESTS COMPLETE"
 ```
 
 **Options:**
+
 - `--max-iterations <n>` — Max iterations before auto-stop
 - `--completion-promise <text>` — Promise phrase to signal completion
 
@@ -52,6 +56,7 @@ Cancel an active Ralph loop (removes the loop state file).
 Interactive interview that generates a PRD with right-sized stories, activates the loop, and starts implementing story by story.
 
 **Usage:**
+
 ```
 /ralph-interview Add user authentication with JWT and login UI
 ```
@@ -72,6 +77,7 @@ Multi-agent orchestration patterns for parallel work streams.
 ### Completion Promises
 
 To signal completion, Claude must output a `<promise>` tag:
+
 ```
 <promise>TASK COMPLETE</promise>
 ```
