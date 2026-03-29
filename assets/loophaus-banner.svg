@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200">
+  <defs>
+    <clipPath id="banner-clip">
+      <rect width="800" height="200" rx="0"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="200" fill="#1a1a2e"/>
+
+  <!-- Bauhaus geometric accents — subtle grid lines -->
+  <line x1="0" y1="40" x2="800" y2="40" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="0" y1="160" x2="800" y2="160" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+  <line x1="160" y1="0" x2="160" y2="200" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+
+  <!-- Left geometric composition — Bauhaus loop symbol -->
+  <g transform="translate(95, 100)">
+    <!-- Interlocking circles forming an infinity/loop -->
+    <!-- Left circle -->
+    <circle cx="-22" cy="0" r="32" fill="none" stroke="#f0a500" stroke-width="4"/>
+    <!-- Right circle -->
+    <circle cx="22" cy="0" r="32" fill="none" stroke="#f0a500" stroke-width="4"/>
+
+    <!-- Overlay to create interlocking effect -->
+    <path d="M 0,-18 Q 10,-8 0,0 Q -10,8 0,18" fill="none" stroke="#1a1a2e" stroke-width="5"/>
+    <path d="M 0,-18 Q 10,-8 0,0 Q -10,8 0,18" fill="none" stroke="#f0a500" stroke-width="4"/>
+
+    <!-- Center dot -->
+    <circle cx="0" cy="0" r="4" fill="#f0a500"/>
+  </g>
+
+  <!-- Bauhaus accent — small geometric shapes -->
+  <!-- Top-left triangle -->
+  <polygon points="0,0 40,0 0,40" fill="#f0a500" opacity="0.15"/>
+  <!-- Bottom-right square -->
+  <rect x="760" y="160" width="40" height="40" fill="#f0a500" opacity="0.12"/>
+  <!-- Small circle accent -->
+  <circle cx="740" cy="30" r="8" fill="none" stroke="#f0a500" stroke-opacity="0.2" stroke-width="2"/>
+
+  <!-- Main text: loophaus -->
+  <text x="260" y="112" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="700" font-size="56" fill="#ffffff" letter-spacing="3">
+    loop<tspan fill="#f0a500">haus</tspan>
+  </text>
+
+  <!-- Subtitle -->
+  <text x="262" y="142" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="400" font-size="16" fill="#ffffff" opacity="0.6" letter-spacing="4">
+    CONTROL PLANE FOR CODING AGENTS
+  </text>
+
+  <!-- Thin accent line under subtitle -->
+  <rect x="262" y="152" width="80" height="2" fill="#f0a500" rx="1"/>
+
+  <!-- Vertical separator line -->
+  <line x1="195" y1="60" x2="195" y2="140" stroke="#f0a500" stroke-width="2" stroke-opacity="0.4"/>
+
+</svg>
