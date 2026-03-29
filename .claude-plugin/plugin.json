@@ -1,11 +1,11 @@
 {
-  "name": "ralph-codex",
-  "description": "PRD-driven Ralph Loop with interactive interview, multi-agent orchestration, and stop hooks for iterative AI development.",
-  "version": "1.1.0",
+  "name": "loophaus",
+  "description": "loophaus — Control plane for coding agents",
+  "version": "0.0.0",
   "author": {
     "name": "graypark",
     "email": "vcz.graypark@gmail.com"
   },
   "skills": "./skills/",
-  "keywords": ["ralph", "loop", "prd", "automation", "agent", "orchestration"]
+  "keywords": ["loophaus", "loop", "control-plane", "agents"]
 }

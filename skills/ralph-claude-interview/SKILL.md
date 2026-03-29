@@ -1,20 +1,20 @@
 ---
 name: ralph-claude-interview
-description: "Claude Code interview that generates PRD, activates the official ralph-loop stop hook, and starts working immediately. Uses Skill tool for loop invocation."
+description: "Claude Code interview that generates PRD, activates the official loop stop hook, and starts working immediately. Uses Skill tool for loop invocation."
 ---
 
-# Ralph Claude Interview
+# Loop Interview (Claude Code)
 
-You are an expert at generating PRD-driven Ralph Loop tasks for Claude Code.
-Interview the user, generate prd.json, then invoke the official ralph-loop plugin via Skill tool to start the loop.
+You are an expert at generating PRD-driven Loop tasks for Claude Code.
+Interview the user, generate prd.json, then invoke the official loop plugin via Skill tool to start the loop.
 
 ## Core Principles
 
 - **PRD-driven**: prd.json (ralph-skills compatible) tracks all stories
 - **progress.txt**: Append-only log with Codebase Patterns section
 - **One story per iteration**: Each loop cycle implements ONE story
-- **Self-contained stop hook**: Uses ralph-codex's own bash stop hook
-- **Skill tool invocation**: Start the loop via the Skill tool (`ralph-codex:ralph-loop`)
+- **Self-contained stop hook**: Uses loophaus's own bash stop hook
+- **Skill tool invocation**: Start the loop via the Skill tool (`loophaus:ralph-loop`)
 
 ## Interview Process
 
@@ -106,12 +106,12 @@ ralph-skills compatible format:
 ## Conversation Flow
 
 ```
-[User]      → /ralph-claude-interview "build X"
+[User]      → /loop-plan "build X"
 [Assistant] → Interview questions (skip if enough context)
 [User]      → Answers
 [Assistant] → Shows PRD briefly, asks "Ready?"
 [User]      → "y"
-[Assistant] → Writes files + invokes ralph-loop:ralph-loop via Skill tool
+[Assistant] → Writes files + invokes loop via Skill tool
 ```
 
 ### Quick-Run
@@ -142,14 +142,14 @@ cat > progress.txt << 'EOF'
 EOF
 ```
 
-### Step 3: Invoke ralph-loop via Skill tool
+### Step 3: Invoke loop via Skill tool
 
 This is the critical step. You MUST use the Skill tool to start the loop:
 
 ```
 Skill tool call:
-  skill: "ralph-codex:ralph-loop"
-  args: "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3. On success: commit 'feat: [Story ID] - [Title]'. Update prd.json passes to true. DISCOVERY PHASE: Review what you just built — did you find hidden complexity, missing edge cases, new dependencies, or broken assumptions? If YES: add new stories to prd.json (next sequential ID, passes: false), log discovery in progress.txt under Discoveries section, and increase max_iterations in .claude/ralph-loop.local.md if needed (formula: current_iteration + remaining*2 + 3). If NO: just append learnings to progress.txt. If ALL stories (including new ones) pass: <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next." --max-iterations <N> --completion-promise "COMPLETE"
+  skill: "loophaus:ralph-loop"
+  args: "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3. On success: commit 'feat: [Story ID] - [Title]'. Update prd.json passes to true. DISCOVERY PHASE: Review what you just built — did you find hidden complexity, missing edge cases, new dependencies, or broken assumptions? If YES: add new stories to prd.json (next sequential ID, passes: false), log discovery in progress.txt under Discoveries section, and increase maxIterations in .loophaus/state.json if needed (formula: current_iteration + remaining*2 + 3). If NO: just append learnings to progress.txt. If ALL stories (including new ones) pass: <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next." --max-iterations <N> --completion-promise "COMPLETE"
 ```
 
 Replace `<VERIFY_CMD>` and `<N>` with actual values.
@@ -160,18 +160,18 @@ After writing prd.json and progress.txt, you MUST make a real Skill tool call.
 
 WRONG:
 
-- Printing the /ralph-loop command as text
+- Printing the /loop command as text
 - Writing files and saying "ready"
 - Describing what would happen
 
 RIGHT:
 
-- Use the Skill tool with skill="ralph-codex:ralph-loop" and the generated args
-- This starts the loop — ralph-codex's stop hook takes over from there
+- Use the Skill tool with skill="loophaus:ralph-loop" and the generated args
+- This starts the loop — loophaus's stop hook takes over from there
 
-ralph-codex will:
+loophaus will:
 
-1. Run the setup script (creates `.claude/ralph-loop.local.md`)
+1. Run the setup script (creates `.loophaus/state.json`)
 2. Inject the prompt into the session
 3. You start working on US-001
 4. When you finish and try to exit, the stop hook re-injects the prompt

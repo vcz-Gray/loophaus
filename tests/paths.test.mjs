@@ -40,10 +40,10 @@ describe("paths.mjs", () => {
     expect(getHooksJsonPath()).toMatch(/hooks\.json$/);
   });
 
-  it("getPluginInstallDir includes ralph-codex", () => {
+  it("getPluginInstallDir includes loophaus", () => {
     originalCodexHome = process.env.CODEX_HOME;
     delete process.env.CODEX_HOME;
-    expect(getPluginInstallDir()).toContain("ralph-codex");
+    expect(getPluginInstallDir()).toContain("loophaus");
   });
 
   it("getSkillsDir ends with skills", () => {

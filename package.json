@@ -1,29 +1,32 @@
 {
-  "name": "@graypark/ralph-codex",
+  "name": "@graypark/loophaus",
   "version": "1.2.1",
   "type": "module",
-  "description": "Ralph Loop for Codex CLI & Claude Code — iterative dev loops with multi-agent orchestration, interactive interview, and stop hooks",
+  "description": "loophaus — Control plane for coding agents. Iterative dev loops with multi-agent orchestration.",
   "license": "MIT",
   "author": "graypark",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vcz-Gray/ralph-codex"
+    "url": "https://github.com/vcz-Gray/loophaus"
   },
-  "homepage": "https://github.com/vcz-Gray/ralph-codex#readme",
+  "homepage": "https://github.com/vcz-Gray/loophaus#readme",
   "bugs": {
-    "url": "https://github.com/vcz-Gray/ralph-codex/issues"
+    "url": "https://github.com/vcz-Gray/loophaus/issues"
   },
   "publishConfig": {
     "access": "public"
   },
   "bin": {
-    "ralph-codex": "./bin/install.mjs"
+    "loophaus": "./bin/loophaus.mjs"
   },
   "files": [
     "bin/",
     "hooks/",
     "commands/",
     "codex/",
+    "core/",
+    "store/",
+    "platforms/",
     "scripts/",
     "lib/",
     "skills/",
@@ -33,22 +36,19 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "postinstall": "echo 'Run: npx ralph-codex --help'"
+    "postinstall": "echo 'Run: npx loophaus --help'"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "keywords": [
-    "codex",
-    "ralph-loop",
-    "autonomous",
+    "loophaus",
+    "loop",
     "ai-agent",
     "iterative-development",
     "stop-hook",
-    "cross-platform",
-    "multi-agent",
-    "orchestration",
-    "claude-code"
+    "control-plane",
+    "coding-agents"
   ],
   "devDependencies": {
     "vitest": "^4.1.0"

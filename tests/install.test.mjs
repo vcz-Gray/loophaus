@@ -18,7 +18,7 @@ const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, "..");
-const installScript = join(projectRoot, "bin", "install.mjs");
+const cliScript = join(projectRoot, "bin", "loophaus.mjs");
 
 let tempDir;
 
@@ -39,12 +39,12 @@ async function fileExists(p) {
   }
 }
 
-describe("install.mjs", () => {
+describe("loophaus CLI", () => {
   it("--dry-run produces no file changes", async () => {
     const codexHome = join(tempDir, ".codex");
     const { stdout } = await execFileAsync(
       "node",
-      [installScript, "--dry-run"],
+      [cliScript, "install", "--host", "codex-cli", "--dry-run"],
       {
         env: { ...process.env, CODEX_HOME: codexHome },
         cwd: projectRoot,
@@ -52,42 +52,38 @@ describe("install.mjs", () => {
     );
     expect(stdout).toContain("DRY RUN");
     expect(stdout).toContain("Dry run complete");
-    // No files should have been created
-    expect(await fileExists(join(codexHome, "plugins", "ralph-codex"))).toBe(
+    expect(await fileExists(join(codexHome, "plugins", "loophaus"))).toBe(
       false,
     );
   });
 
-  it("--global --force installs files correctly", async () => {
+  it("install --host codex-cli --force installs files correctly", async () => {
     const codexHome = join(tempDir, ".codex");
     const { stdout } = await execFileAsync(
       "node",
-      [installScript, "--global", "--force"],
+      [cliScript, "install", "--host", "codex-cli", "--force"],
       {
         env: { ...process.env, CODEX_HOME: codexHome },
         cwd: projectRoot,
       },
     );
-    expect(stdout).toContain("installed successfully");
-    // Plugin dir should exist
+    expect(stdout).toContain("loophaus installed for Codex CLI");
     expect(
       await fileExists(
-        join(codexHome, "plugins", "ralph-codex", "hooks", "stop-hook.mjs"),
+        join(codexHome, "plugins", "loophaus", "hooks", "stop-hook.mjs"),
       ),
     ).toBe(true);
     expect(
       await fileExists(
-        join(codexHome, "plugins", "ralph-codex", "lib", "state.mjs"),
+        join(codexHome, "plugins", "loophaus", "lib", "state.mjs"),
       ),
     ).toBe(true);
-    // hooks.json should exist
     expect(await fileExists(join(codexHome, "hooks.json"))).toBe(true);
     const hooksJson = JSON.parse(
       await readFile(join(codexHome, "hooks.json"), "utf-8"),
     );
     expect(hooksJson.hooks.Stop).toHaveLength(1);
-    expect(hooksJson.hooks.Stop[0].hooks[0].command).toContain("ralph-codex");
-    // Skills should exist
+    expect(hooksJson.hooks.Stop[0].hooks[0].command).toContain("loophaus");
     expect(
       await fileExists(join(codexHome, "skills", "ralph-loop", "SKILL.md")),
     ).toBe(true);
@@ -99,7 +95,6 @@ describe("install.mjs", () => {
   it("hooks.json merge preserves existing hooks", async () => {
     const codexHome = join(tempDir, ".codex");
     await mkdir(codexHome, { recursive: true });
-    // Create existing hooks.json with another hook
     const existingHooks = {
       hooks: {
         Stop: [{ hooks: [{ type: "command", command: "echo other-hook" }] }],
@@ -114,39 +109,42 @@ describe("install.mjs", () => {
       "utf-8",
     );
 
-    await execFileAsync("node", [installScript, "--global", "--force"], {
-      env: { ...process.env, CODEX_HOME: codexHome },
-      cwd: projectRoot,
-    });
+    await execFileAsync(
+      "node",
+      [cliScript, "install", "--host", "codex-cli", "--force"],
+      {
+        env: { ...process.env, CODEX_HOME: codexHome },
+        cwd: projectRoot,
+      },
+    );
 
     const hooksJson = JSON.parse(
       await readFile(join(codexHome, "hooks.json"), "utf-8"),
     );
-    // Should have existing + ralph-codex
     expect(hooksJson.hooks.Stop).toHaveLength(2);
     expect(hooksJson.hooks.Stop[0].hooks[0].command).toBe("echo other-hook");
-    expect(hooksJson.hooks.Stop[1].hooks[0].command).toContain("ralph-codex");
-    // SessionStart should be preserved
+    expect(hooksJson.hooks.Stop[1].hooks[0].command).toContain("loophaus");
     expect(hooksJson.hooks.SessionStart).toHaveLength(1);
   });
 
   it("refuses to overwrite without --force", async () => {
     const codexHome = join(tempDir, ".codex");
-    // First install
-    await execFileAsync("node", [installScript, "--global", "--force"], {
-      env: { ...process.env, CODEX_HOME: codexHome },
-      cwd: projectRoot,
-    });
-    // Second install without --force should fail
-    try {
-      await execFileAsync("node", [installScript, "--global"], {
+    await execFileAsync(
+      "node",
+      [cliScript, "install", "--host", "codex-cli", "--force"],
+      {
         env: { ...process.env, CODEX_HOME: codexHome },
         cwd: projectRoot,
-      });
-      // Should not reach here
-      expect(true).toBe(false);
-    } catch (err) {
-      expect(err.stdout).toContain("Use --force");
-    }
+      },
+    );
+    const { stdout } = await execFileAsync(
+      "node",
+      [cliScript, "install", "--host", "codex-cli"],
+      {
+        env: { ...process.env, CODEX_HOME: codexHome },
+        cwd: projectRoot,
+      },
+    );
+    expect(stdout).toContain("Use --force");
   });
 });

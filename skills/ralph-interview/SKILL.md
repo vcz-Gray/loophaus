@@ -1,11 +1,11 @@
 ---
 name: ralph-interview
-description: "Interactive interview that generates optimized ralph-loop commands with PRD-based phase tracking. Compatible with ralph-skills prd.json format."
+description: "Interactive interview that generates optimized loop commands with PRD-based phase tracking. Compatible with ralph-skills prd.json format."
 ---
 
-# Ralph Interview — Command Generator
+# Loop Interview — Command Generator
 
-You are an expert at crafting ralph-loop commands for the Ralph Loop plugin.
+You are an expert at crafting loop commands for the Loop plugin.
 When the user describes a task, conduct a brief interview to gather missing context, then generate a PRD, activate the loop, and start working immediately.
 
 ## Core Principles
@@ -16,7 +16,7 @@ When the user describes a task, conduct a brief interview to gather missing cont
 - **Self-correcting**: Every prompt embeds "modify, verify, retry on failure" cycles.
 - **Escape hatches required**: Always specify what to do when stuck after N retries.
 - **Objective completion criteria only**: No subjective criteria. Use test passes, linter clears, etc.
-- **Parallel when possible**: Use ralph-orchestrator patterns for independent work streams.
+- **Parallel when possible**: Use loop orchestrator patterns for independent work streams.
 
 ## Interview Process
 
@@ -47,9 +47,9 @@ Skip items already covered. Bundle questions — max 3-5 per round, one round on
 - **Dependencies exist** -> Prerequisite work in a prior Phase
 - **5 or fewer simple items** -> Single Phase is fine
 
-### When to Use Subagents (via ralph-orchestrator)
+### When to Use Subagents (via loop orchestrator)
 
-Evaluate the task against the ralph-orchestrator decision matrix:
+Evaluate the task against the loop orchestrator decision matrix:
 
 | Factor                         | Score |
 | ------------------------------ | ----- |
@@ -61,9 +61,9 @@ Evaluate the task against the ralph-orchestrator decision matrix:
 | Needs cross-file understanding | -1    |
 | Multiple services/repos        | +3    |
 
-- **Score >= 3**: Recommend parallel subagents within the ralph-loop prompt
+- **Score >= 3**: Recommend parallel subagents within the loop prompt
 - **Score 0-2**: Sequential loop, optional scout phase
-- **Score < 0**: Single sequential Ralph Loop
+- **Score < 0**: Single sequential Loop
 
 ### Recommended max-iterations
 
@@ -174,7 +174,7 @@ The `## Discoveries` section tracks all dynamically added stories with rationale
 - Same `passes: true/false` tracking, same commit convention
 - Same `<promise>COMPLETE</promise>` completion signal
 
-### Official ralph-loop plugin (claude-plugins-official)
+### Official loop plugin (claude-plugins-official)
 
 - If the official plugin is installed, this interview works with its stop hook
 - PRD and progress files work with either stop hook
@@ -192,7 +192,7 @@ The `## Discoveries` section tracks all dynamically added stories with rationale
 ## Conversation Flow
 
 ```
-[User]      -> /ralph-interview "build X feature"
+[User]      -> /loop-plan "build X feature"
 [Assistant] -> Interview questions (1 round, skip if context is sufficient)
 [User]      -> Answers
 [Assistant] -> Shows PRD briefly, asks "Ready?"
@@ -230,11 +230,11 @@ EOF
 
 ### Step 3: Activate the stop hook via Bash
 
-Write the ralph-loop state file that makes the stop hook intercept session exits:
+Write the loop state file that makes the stop hook intercept session exits:
 
 ```bash
-mkdir -p .codex
-cat > .codex/ralph-loop.state.json << 'EOF'
+mkdir -p .loophaus
+cat > .loophaus/state.json << 'EOF'
 {
   "active": true,
   "prompt": "Read prd.json for task plan. Read progress.txt for status (Codebase Patterns first). Pick highest priority story where passes is false. Implement that ONE story. Run verification: <VERIFY_CMD>. On failure: fix and retry, max 3 times. On success: commit with feat: [Story ID] - [Title]. Update prd.json: set passes to true. DISCOVERY PHASE: Review what you just built — did you find hidden complexity, missing edge cases, new dependencies, or broken assumptions? If YES: add new stories to prd.json (next sequential ID, passes: false), log discovery in progress.txt under Discoveries section. If NO: just append learnings to progress.txt. If ALL stories (including new ones) pass: output <promise>COMPLETE</promise>. When stuck: set notes in prd.json, skip to next story.",

@@ -13,11 +13,11 @@ let tempDir;
 
 beforeEach(async () => {
   tempDir = await mkdtemp(join(tmpdir(), "ralph-test-"));
-  process.env.RALPH_STATE_FILE = join(tempDir, "state.json");
+  process.env.LOOPHAUS_STATE_FILE = join(tempDir, "state.json");
 });
 
 afterEach(async () => {
-  delete process.env.RALPH_STATE_FILE;
+  delete process.env.LOOPHAUS_STATE_FILE;
   await rm(tempDir, { recursive: true, force: true });
 });
 
@@ -43,7 +43,7 @@ describe("state.mjs", () => {
     };
     await writeState(data);
 
-    const raw = await readFile(process.env.RALPH_STATE_FILE, "utf-8");
+    const raw = await readFile(process.env.LOOPHAUS_STATE_FILE, "utf-8");
     const parsed = JSON.parse(raw);
     expect(parsed.active).toBe(true);
     expect(parsed.prompt).toBe("Build API");
@@ -83,7 +83,7 @@ describe("state.mjs", () => {
 
   it("auto-creates directory if missing", async () => {
     const nested = join(tempDir, "deep", "nested", "state.json");
-    process.env.RALPH_STATE_FILE = nested;
+    process.env.LOOPHAUS_STATE_FILE = nested;
     await writeState({
       active: true,
       prompt: "test",

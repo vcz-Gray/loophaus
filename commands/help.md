@@ -1,14 +1,14 @@
 ---
-description: "Explain Ralph Codex plugin and available commands"
+description: "Explain loophaus plugin and available commands"
 ---
 
-# Ralph Codex Plugin Help
+# Loophaus Plugin Help
 
 Please explain the following to the user:
 
-## What is Ralph Loop?
+## What is Loop?
 
-Ralph Loop implements the Ralph Wiggum technique — an iterative development methodology based on continuous AI loops, pioneered by Geoffrey Huntley.
+Loop implements the Ralph Wiggum technique — an iterative development methodology based on continuous AI loops, pioneered by Geoffrey Huntley.
 
 **Core concept:**
 
@@ -31,15 +31,15 @@ The same prompt is fed to Claude repeatedly. The "self-referential" aspect comes
 
 ## Available Commands
 
-### /ralph-loop <PROMPT> [OPTIONS]
+### /loop <PROMPT> [OPTIONS]
 
-Start a Ralph loop in your current session.
+Start a loop in your current session.
 
 **Usage:**
 
 ```
-/ralph-loop "Refactor the cache layer" --max-iterations 20
-/ralph-loop "Add tests" --completion-promise "TESTS COMPLETE"
+/loop "Refactor the cache layer" --max-iterations 20
+/loop "Add tests" --completion-promise "TESTS COMPLETE"
 ```
 
 **Options:**
@@ -47,30 +47,34 @@ Start a Ralph loop in your current session.
 - `--max-iterations <n>` — Max iterations before auto-stop
 - `--completion-promise <text>` — Promise phrase to signal completion
 
-### /cancel-ralph
+### /loop-stop
 
-Cancel an active Ralph loop (removes the loop state file).
+Stop an active loop (removes the loop state file).
 
-### /ralph-interview
+### /loop-plan
 
 Interactive interview that generates a PRD with right-sized stories, activates the loop, and starts implementing story by story.
 
 **Usage:**
 
 ```
-/ralph-interview Add user authentication with JWT and login UI
+/loop-plan Add user authentication with JWT and login UI
 ```
 
-### /ralph-orchestrator
+### /loop-pulse
+
+Check the status of an active loop, including iteration count and story progress.
+
+### /loop-orchestrator
 
 Multi-agent orchestration patterns for parallel work streams.
 
 ## Available Skills (via Skill tool)
 
-- `ralph-codex:ralph-interview` — PRD generation + loop start
-- `ralph-codex:ralph-orchestrator` — Multi-agent patterns
-- `ralph-codex:ralph-loop` — Direct loop execution
-- `ralph-codex:cancel-ralph` — Cancel active loop
+- `loophaus:ralph-interview` — PRD generation + loop start
+- `loophaus:ralph-orchestrator` — Multi-agent patterns
+- `loophaus:ralph-loop` — Direct loop execution
+- `loophaus:cancel-ralph` — Cancel active loop
 
 ## Key Concepts
 
@@ -84,9 +88,9 @@ To signal completion, Claude must output a `<promise>` tag:
 
 ### PRD-driven Loops
 
-ralph-codex extends basic Ralph with PRD (prd.json) and progress tracking (progress.txt), enabling story-by-story implementation with learnings carried across iterations.
+loophaus extends basic Loop with PRD (prd.json) and progress tracking (progress.txt), enabling story-by-story implementation with learnings carried across iterations.
 
 ## Learn More
 
 - Original technique: https://ghuntley.com/ralph/
-- ralph-codex: https://github.com/vcz-Gray/ralph-codex
+- loophaus: https://github.com/vcz-Gray/ralph-codex

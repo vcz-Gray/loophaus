@@ -1,9 +1,9 @@
 ---
 name: ralph-claude-orchestrator
-description: "Multi-agent orchestration patterns for Ralph Loop in Claude Code. Uses the Agent tool for parallel subagent spawning."
+description: "Multi-agent orchestration patterns for Loop in Claude Code. Uses the Agent tool for parallel subagent spawning."
 ---
 
-# Ralph Claude Orchestrator — Multi-Agent Patterns
+# Loop Orchestrator — Multi-Agent Patterns (Claude Code)
 
 Orchestration patterns optimized for Claude Code's Agent tool. Analyzes tasks and recommends the best combination of sequential loops and parallel subagents.
 
@@ -33,11 +33,11 @@ Best for: Large codebases where you need to understand before you change.
 
 ```
 Phase 1 (Parallel Subagents via Agent tool):
-├── Agent "fe-scan" (Explore, background): Scan src/frontend/** → .ralph/reports/frontend.md
-├── Agent "be-scan" (Explore, background): Scan src/backend/** → .ralph/reports/backend.md
-└── Agent "db-scan" (Explore, background): Scan src/db/** → .ralph/reports/db.md
+├── Agent "fe-scan" (Explore, background): Scan src/frontend/** → .loophaus/reports/frontend.md
+├── Agent "be-scan" (Explore, background): Scan src/backend/** → .loophaus/reports/backend.md
+└── Agent "db-scan" (Explore, background): Scan src/db/** → .loophaus/reports/db.md
 
-Phase 2 (Ralph Claude Loop):
+Phase 2 (Loop):
 └── Read merged reports → implement fixes story by story via prd.json
 ```
 
@@ -64,7 +64,7 @@ Fan-Out (parallel Agent calls in single message):
 ├── Agent "perf" (Explore): Profile and benchmark → findings.md
 └── Agent "a11y" (Explore): Check accessibility → findings.md
 
-Fan-In (Ralph Claude Loop):
+Fan-In (Loop):
 └── Synthesize all findings → create action plan → implement
 ```
 
@@ -76,7 +76,7 @@ Best for: Unfamiliar codebases or risky changes.
 Scout (single Agent, Explore type):
 └── Map codebase, trace dependencies, identify risks → scout-report.md
 
-Execute (Ralph Claude Loop):
+Execute (Loop):
 └── Use scout report as reference, implement changes
 ```
 
@@ -85,9 +85,9 @@ Execute (Ralph Claude Loop):
 Best for: Complex multi-stage transformations.
 
 ```
-Stage 1 (Ralph Claude Loop): Parse + validate → intermediate output
+Stage 1 (Loop): Parse + validate → intermediate output
   checkpoint: verify schema
-Stage 2 (Ralph Claude Loop): Transform → draft output
+Stage 2 (Loop): Transform → draft output
   checkpoint: run regression tests
 Stage 3 (Parallel Agents): Apply to multiple files
   checkpoint: final integration test
@@ -107,21 +107,21 @@ Stage 3 (Parallel Agents): Apply to multiple files
 
 - **Score >= 3**: Recommend parallel subagents
 - **Score 0-2**: Sequential loop, optional scout phase
-- **Score < 0**: Single sequential Ralph Loop
+- **Score < 0**: Single sequential Loop
 
 ## Report Convention
 
 ```
-.ralph/
+.loophaus/
 └── reports/
     ├── {agent-name}.md       # Individual agent output
     ├── merged.md             # Combined findings
     └── plan.md               # Action plan
 ```
 
-## Integration with Ralph Claude Interview
+## Integration with Loop Interview
 
-When `/ralph-claude-interview` invokes this skill, provide:
+When `/loop-plan` invokes this skill, provide:
 
 1. Recommended pattern
 2. Agent breakdown with roles and file boundaries

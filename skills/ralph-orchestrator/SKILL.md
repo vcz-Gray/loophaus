@@ -1,11 +1,11 @@
 ---
 name: ralph-orchestrator
-description: "Orchestration patterns for ralph-loop: subagent spawning, parallel exploration, and task decomposition strategies"
+description: "Orchestration patterns for loop: subagent spawning, parallel exploration, and task decomposition strategies"
 ---
 
-# Ralph Orchestrator — Multi-Agent Loop Patterns
+# Loop Orchestrator — Multi-Agent Loop Patterns
 
-You are an expert at designing optimal execution strategies for Ralph Loop tasks.
+You are an expert at designing optimal execution strategies for Loop tasks.
 When asked to orchestrate a task, analyze its structure and recommend the best combination of sequential loops, parallel subagents, and phased execution.
 
 ## Core Concept
@@ -51,7 +51,7 @@ Phase 1 (Parallel Subagents):
 └── Agent C: Scan src/shared/** for pattern X → report-shared.md
 
 Phase 2 (Sequential Loop):
-└── Ralph Loop: Read all reports → implement fixes in priority order
+└── Loop: Read all reports → implement fixes in priority order
 ```
 
 **Prompt pattern for Phase 1:**
@@ -61,13 +61,13 @@ Phase 2 (Sequential Loop):
 Use the Agent tool to spawn these subagents simultaneously:
 
 1. Agent "frontend-scan": Search src/frontend/** for [pattern].
-   Write findings to .ralph/reports/frontend-scan.md
+   Write findings to .loophaus/reports/frontend-scan.md
 2. Agent "backend-scan": Search src/backend/** for [pattern].
-   Write findings to .ralph/reports/backend-scan.md
+   Write findings to .loophaus/reports/backend-scan.md
 3. Agent "shared-scan": Search src/shared/** for [pattern].
-   Write findings to .ralph/reports/shared-scan.md
+   Write findings to .loophaus/reports/shared-scan.md
 
-After ALL agents complete, merge reports into .ralph/reports/merged.md
+After ALL agents complete, merge reports into .loophaus/reports/merged.md
 with a unified priority list.
 ```
 
@@ -82,7 +82,7 @@ Phase 1 (Parallel Implementation):
 └── Agent "auth-dev": Modify src/auth/** only → commit per item
 
 Phase 2 (Integration Verification):
-└── Ralph Loop: Run full test suite, fix any integration issues
+└── Loop: Run full test suite, fix any integration issues
 ```
 
 **Prompt pattern:**
@@ -115,7 +115,7 @@ Fan-Out (Parallel):
 └── Agent 3: Analyze problem from angle C → findings-c.md
 
 Fan-In (Sequential):
-└── Ralph Loop: Synthesize all findings → create action plan → implement
+└── Loop: Synthesize all findings → create action plan → implement
 ```
 
 ### Pattern 4: Pipeline with Checkpoints
@@ -123,9 +123,9 @@ Fan-In (Sequential):
 Best for: Complex multi-stage transformations.
 
 ```
-Stage 1 (Ralph Loop): Parse + validate input → intermediate.json
+Stage 1 (Loop): Parse + validate input → intermediate.json
   ↓ checkpoint: verify intermediate.json schema
-Stage 2 (Ralph Loop): Transform data → output draft
+Stage 2 (Loop): Transform data → output draft
   ↓ checkpoint: run regression tests
 Stage 3 (Parallel Agents): Apply fixes to multiple output files
   ↓ checkpoint: final integration test
@@ -138,10 +138,10 @@ Best for: Unfamiliar codebases or risky changes.
 ```
 Scout Phase (Single Agent, read-only):
 └── Agent "scout": Explore codebase, map dependencies, identify risks
-    → .ralph/reports/scout-report.md
+    → .loophaus/reports/scout-report.md
 
-Execute Phase (Ralph Loop):
-└── Ralph Loop: Use scout report as reference, implement changes
+Execute Phase (Loop):
+└── Loop: Use scout report as reference, implement changes
 ```
 
 ## Subagent Configuration Reference
@@ -176,9 +176,9 @@ Do NOT modify any files.
 
 ```
 "Spawn one agent per service directory to scan for auth issues:
- 1. scanner on src/frontend/** → .ralph/reports/frontend.md
- 2. scanner on src/backend/** → .ralph/reports/backend.md
- 3. scanner on src/auth/** → .ralph/reports/auth.md
+ 1. scanner on src/frontend/** → .loophaus/reports/frontend.md
+ 2. scanner on src/backend/** → .loophaus/reports/backend.md
+ 3. scanner on src/auth/** → .loophaus/reports/auth.md
  Wait for all, then summarize findings by severity."
 ```
 
@@ -187,10 +187,10 @@ Do NOT modify any files.
 ```
 # For 100+ similar items, use CSV-driven batch spawning:
 spawn_agents_on_csv:
-  csv_path: .ralph/items.csv
+  csv_path: .loophaus/items.csv
   instruction: "Review {file_path} for {issue_type}. Return JSON via report_agent_job_result"
   output_schema: { file: string, severity: string, fix: string }
-  output_csv_path: .ralph/reports/batch-results.csv
+  output_csv_path: .loophaus/reports/batch-results.csv
   max_concurrency: 6
 ```
 
@@ -217,7 +217,7 @@ spawn_agents_on_csv:
 All subagent outputs should follow this structure:
 
 ```
-.ralph/
+.loophaus/
 └── reports/
     ├── {agent-name}.md       # Individual agent output
     ├── merged.md             # Combined findings (created by orchestrator)
@@ -242,13 +242,13 @@ When analyzing a task, use this scoring to decide the orchestration pattern:
 
 - **Score >= 3**: Recommend parallel subagents
 - **Score 0–2**: Recommend sequential with optional scout phase
-- **Score < 0**: Recommend single sequential Ralph Loop
+- **Score < 0**: Recommend single sequential Loop
 
-## Integration with Ralph Interview
+## Integration with Loop Interview
 
-When `/ralph-interview` invokes this skill, provide:
+When `/loop-plan` invokes this skill, provide:
 
 1. **Recommended pattern** — which orchestration pattern fits best
 2. **Agent breakdown** — list of subagents with their roles and file boundaries
 3. **Phase structure** — how phases connect and what checkpoints exist
-4. **Prompt snippets** — ready-to-embed subagent instructions for the ralph-loop prompt
+4. **Prompt snippets** — ready-to-embed subagent instructions for the loop prompt

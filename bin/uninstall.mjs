@@ -15,7 +15,7 @@ import {
 } from "../lib/paths.mjs";
 import { getStatePath } from "../lib/state.mjs";
 
-const RALPH_HOOK_MARKER = "ralph-codex";
+const RALPH_HOOK_MARKER = "loophaus";
 
 function log(icon, msg) {
   console.log(`  ${icon} ${msg}`);
@@ -33,7 +33,7 @@ async function fileExists(p) {
 async function uninstallClaude({ dryRun = false } = {}) {
   console.log("");
   console.log(
-    `ralph-codex uninstaller — Claude Code${dryRun ? " (DRY RUN)" : ""}`,
+    `loophaus uninstaller — Claude Code${dryRun ? " (DRY RUN)" : ""}`,
   );
   console.log("");
 
@@ -54,7 +54,7 @@ async function uninstallClaude({ dryRun = false } = {}) {
     try {
       const raw = await readFile(installedPluginsPath, "utf-8");
       const data = JSON.parse(raw);
-      const pluginKey = "ralph-codex@ralph-codex-marketplace";
+      const pluginKey = "loophaus@loophaus-marketplace";
       if (data.plugins && data.plugins[pluginKey]) {
         delete data.plugins[pluginKey];
         log(">", `Remove ${pluginKey} from installed_plugins.json`);
@@ -79,7 +79,7 @@ async function uninstallClaude({ dryRun = false } = {}) {
     try {
       const raw = await readFile(settingsPath, "utf-8");
       const settings = JSON.parse(raw);
-      const pluginKey = "ralph-codex@ralph-codex-marketplace";
+      const pluginKey = "loophaus@loophaus-marketplace";
       if (
         settings.enabledPlugins &&
         settings.enabledPlugins[pluginKey] !== undefined
@@ -103,7 +103,7 @@ async function uninstallClaude({ dryRun = false } = {}) {
   if (dryRun) {
     log("\u2714", "Dry run complete. No files were modified.");
   } else {
-    log("\u2714", "ralph-codex uninstalled from Claude Code.");
+    log("\u2714", "loophaus uninstalled from Claude Code.");
     console.log("");
     console.log("  Run /reload-plugins in Claude Code to apply.");
   }
@@ -125,7 +125,7 @@ export async function uninstall({
 
   console.log("");
   console.log(
-    `ralph-codex uninstaller — Codex CLI${dryRun ? " (DRY RUN)" : ""}`,
+    `loophaus uninstaller — Codex CLI${dryRun ? " (DRY RUN)" : ""}`,
   );
   console.log("");
 
@@ -155,7 +155,7 @@ export async function uninstall({
             );
           }
         } else {
-          log("-", "No ralph-codex hooks found in hooks.json");
+          log("-", "No loophaus hooks found in hooks.json");
         }
       }
     } catch {
@@ -209,7 +209,7 @@ export async function uninstall({
   if (dryRun) {
     log("\u2714", "Dry run complete. No files were modified.");
   } else {
-    log("\u2714", "ralph-codex uninstalled successfully.");
+    log("\u2714", "loophaus uninstalled successfully.");
   }
   console.log("");
 }
