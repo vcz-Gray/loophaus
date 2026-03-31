@@ -15,6 +15,28 @@ async function fileExists(p) {
   try { await access(p); return true; } catch { return false; }
 }
 
+/**
+ * Convert Claude Code frontmatter to Kiro steering manual mode format.
+ * Strips Claude-specific fields (allowed-tools, argument-hint, hide-from-slash-command-tool)
+ * and ensures `inclusion: manual` is set for Kiro CLI slash command support.
+ */
+function convertToKiroFrontmatter(content) {
+  // Match the YAML frontmatter block
+  const fmRegex = /^---\n([\s\S]*?)\n---\n/;
+  const match = content.match(fmRegex);
+
+  if (!match) {
+    // No frontmatter found — add Kiro frontmatter
+    return `---\ninclusion: manual\n---\n\n${content}`;
+  }
+
+  // Extract the body after frontmatter
+  const body = content.slice(match[0].length);
+
+  // Build new Kiro frontmatter with inclusion: manual
+  return `---\ninclusion: manual\n---\n\n${body}`;
+}
+
 export async function detect() {
   return fileExists(getKiroHome());
 }
@@ -30,7 +52,7 @@ export async function install({ dryRun = false, force = false } = {}) {
   console.log("");
 
   // Step 1: Create agent config with stop hook
-  console.log("[1/2] Configuring agent with stop hook...");
+  console.log("[1/3] Configuring agent with stop hook...");
   const agentConfig = {
     name: "loophaus",
     description: "loophaus — iterative dev loop agent",
@@ -55,8 +77,22 @@ export async function install({ dryRun = false, force = false } = {}) {
     await writeFile(agentPath, JSON.stringify(agentConfig, null, 2), "utf-8");
   }
 
-  // Step 2: Copy steering files
-  console.log("[2/2] Installing steering files...");
+  // Step 2: Clean up legacy ralph-* steering files
+  console.log("[2/3] Cleaning up legacy steering files...");
+  const legacySteering = [
+    "ralph-loop.md",
+    "cancel-ralph.md",
+  ];
+  for (const name of legacySteering) {
+    const legacyPath = join(steeringDir, name);
+    if (await fileExists(legacyPath)) {
+      console.log(`  > Remove legacy steering: ${name}`);
+      if (!dryRun) await rm(legacyPath);
+    }
+  }
+
+  // Step 3: Copy steering files with Kiro frontmatter conversion
+  console.log("[3/3] Installing steering files...");
   const commands = [
     { src: "commands/loop.md", dest: "loop.md" },
     { src: "commands/loop-plan.md", dest: "loop-plan.md" },
@@ -67,10 +103,12 @@ export async function install({ dryRun = false, force = false } = {}) {
     const srcPath = join(PROJECT_ROOT, src);
     if (await fileExists(srcPath)) {
       const destPath = join(steeringDir, dest);
-      console.log(`  > Copy ${src} -> ${destPath}`);
+      console.log(`  > Copy ${src} -> ${destPath} (Kiro frontmatter)`);
       if (!dryRun) {
         await mkdir(steeringDir, { recursive: true });
-        await cp(srcPath, destPath);
+        const content = await readFile(srcPath, "utf-8");
+        const kiroContent = convertToKiroFrontmatter(content);
+        await writeFile(destPath, kiroContent, "utf-8");
       }
     }
   }
@@ -96,6 +134,9 @@ export async function uninstall({ dryRun = false } = {}) {
     join(kiroHome, "steering", "loop-plan.md"),
     join(kiroHome, "steering", "loop-stop.md"),
     join(kiroHome, "steering", "loop-pulse.md"),
+    // Legacy steering files
+    join(kiroHome, "steering", "ralph-loop.md"),
+    join(kiroHome, "steering", "cancel-ralph.md"),
   ];
 
   console.log("");

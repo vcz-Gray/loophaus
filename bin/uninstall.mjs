@@ -175,8 +175,14 @@ export async function uninstall({
     log("-", "Plugin directory not found");
   }
 
-  // 3. Remove skill directories
+  // 3. Remove skill directories (both legacy ralph-* and new loop-* names)
   const skillNames = [
+    // New skill names
+    "loop",
+    "loop-stop",
+    "loop-plan",
+    "loop-pulse",
+    // Legacy skill names
     "ralph-loop",
     "cancel-ralph",
     "ralph-interview",

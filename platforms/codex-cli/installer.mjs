@@ -1,5 +1,5 @@
 // platforms/codex-cli/installer.mjs
-import { readFile, writeFile, mkdir, cp, access } from "node:fs/promises";
+import { readFile, writeFile, mkdir, cp, access, rm } from "node:fs/promises";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -19,6 +19,103 @@ async function fileExists(p) {
 export async function detect() {
   return fileExists(getCodexHome());
 }
+
+// Legacy ralph-* skill names to clean up
+const LEGACY_SKILLS = [
+  "ralph-loop",
+  "cancel-ralph",
+  "ralph-interview",
+  "ralph-orchestrator",
+  "ralph-claude-interview",
+  "ralph-claude-loop",
+  "ralph-claude-cancel",
+  "ralph-claude-orchestrator",
+];
+
+// New skill definitions for Codex CLI
+const CODEX_SKILLS = {
+  loop: {
+    content: `---
+name: loop
+description: "Start iterative dev loop"
+argument-hint: "PROMPT [--max-iterations N] [--completion-promise TEXT]"
+---
+
+# /loop — Start Iterative Dev Loop
+
+Parse the user's arguments:
+1. Extract \`--max-iterations N\` (default: 20)
+2. Extract \`--completion-promise TEXT\` (default: "TADA")
+3. Everything else is the prompt
+
+Create \`.loophaus/state.json\`:
+\`\`\`json
+{
+  "active": true,
+  "prompt": "<user's prompt>",
+  "completionPromise": "<promise text>",
+  "maxIterations": 20,
+  "currentIteration": 0,
+  "sessionId": ""
+}
+\`\`\`
+
+Then begin working on the task. The stop hook intercepts exit and feeds the SAME PROMPT back.
+
+CRITICAL: If a completion promise is set, ONLY output \`<promise>TEXT</promise>\` when genuinely complete.
+`,
+  },
+  "loop-stop": {
+    content: `---
+name: loop-stop
+description: "Stop active loop"
+---
+
+# /loop-stop
+
+1. Check \`.loophaus/state.json\` exists
+   - Also check legacy \`.codex/ralph-loop.state.json\`
+
+2. If not found: "No active loop."
+
+3. If found: read \`currentIteration\`, set \`active: false\`, report "Stopped loop at iteration N."
+`,
+  },
+  "loop-plan": {
+    content: `---
+name: loop-plan
+description: "Plan and start loop via interactive interview"
+argument-hint: "TASK_DESCRIPTION"
+---
+
+# /loop-plan — Interactive Planning & Loop
+
+## Phase 1: Discovery Interview
+Ask 3-5 focused questions about the task to understand scope, acceptance criteria, constraints.
+
+## Phase 2: PRD Generation
+Generate \`prd.json\` with right-sized user stories.
+
+## Phase 3: Loop Activation
+Create \`.loophaus/state.json\` and start working on US-001 immediately.
+
+Use \`<promise>TASK COMPLETE</promise>\` ONLY when ALL stories pass.
+`,
+  },
+  "loop-pulse": {
+    content: `---
+name: loop-pulse
+description: "Check loop status"
+---
+
+# /loop-pulse
+
+1. Read \`.loophaus/state.json\` (or legacy paths)
+2. If active, show iteration, promise, progress
+3. If \`prd.json\` exists, show story progress
+`,
+  },
+};
 
 export async function install({ dryRun = false, force = false, local = false } = {}) {
   const pluginDir = local
@@ -46,8 +143,20 @@ export async function install({ dryRun = false, force = false, local = false } =
     }
   }
 
-  // Step 1: Copy files
-  console.log("[1/3] Copying plugin files...");
+  // Step 1: Clean up legacy ralph-* skills
+  console.log("[1/4] Cleaning up legacy skills...");
+  for (const name of LEGACY_SKILLS) {
+    const legacyDir = join(skillsDir, name);
+    if (await fileExists(legacyDir)) {
+      console.log(`  > Remove legacy skill: ${name}`);
+      if (!dryRun) {
+        await rm(legacyDir, { recursive: true, force: true });
+      }
+    }
+  }
+
+  // Step 2: Copy files
+  console.log("[2/4] Copying plugin files...");
   for (const dir of ["hooks", "codex/commands", "lib", "core", "store"]) {
     const src = join(PROJECT_ROOT, dir);
     if (!(await fileExists(src))) continue;
@@ -61,8 +170,8 @@ export async function install({ dryRun = false, force = false, local = false } =
   }
   if (!dryRun) await cp(join(PROJECT_ROOT, "package.json"), join(pluginDir, "package.json"));
 
-  // Step 2: Hooks
-  console.log("[2/3] Configuring Stop hook...");
+  // Step 3: Hooks
+  console.log("[3/4] Configuring Stop hook...");
   const stopCmd = `node "${join(pluginDir, "hooks", "stop-hook.mjs")}"`;
   let existing = { hooks: {} };
   if (await fileExists(hooksJsonPath)) {
@@ -79,42 +188,18 @@ export async function install({ dryRun = false, force = false, local = false } =
     await writeFile(hooksJsonPath, JSON.stringify(existing, null, 2), "utf-8");
   }
 
-  // Step 3: Skills
-  console.log("[3/3] Installing skills...");
-  for (const name of ["ralph-loop", "cancel-ralph"]) {
+  // Step 4: Install new skills (loop, loop-stop, loop-plan, loop-pulse)
+  console.log("[4/4] Installing skills...");
+  for (const [name, skill] of Object.entries(CODEX_SKILLS)) {
     const skillDir = join(skillsDir, name);
-    const src = name === "ralph-loop" ? "codex/commands/ralph-loop.md" : "codex/commands/cancel-ralph.md";
     console.log(`  > Install skill: ${name}`);
     if (!dryRun) {
       await mkdir(skillDir, { recursive: true });
-      const srcPath = join(PROJECT_ROOT, src);
-      if (await fileExists(srcPath)) {
-        const content = await readFile(srcPath, "utf-8");
-        await writeFile(
-          join(skillDir, "SKILL.md"),
-          content.replaceAll("${RALPH_CODEX_ROOT}", pluginDir).replaceAll("${LOOPHAUS_ROOT}", pluginDir),
-          "utf-8",
-        );
-      }
-    }
-  }
-
-  const standaloneSkills = [
-    "ralph-interview",
-    "ralph-orchestrator",
-    "ralph-claude-interview",
-    "ralph-claude-loop",
-    "ralph-claude-cancel",
-    "ralph-claude-orchestrator",
-  ];
-  for (const sk of standaloneSkills) {
-    const srcDir = join(PROJECT_ROOT, "skills", sk);
-    if (await fileExists(srcDir)) {
-      console.log(`  > Install skill: ${sk}`);
-      if (!dryRun) {
-        await mkdir(join(skillsDir, sk), { recursive: true });
-        await cp(srcDir, join(skillsDir, sk), { recursive: true });
-      }
+      await writeFile(
+        join(skillDir, "SKILL.md"),
+        skill.content.replaceAll("${RALPH_CODEX_ROOT}", pluginDir).replaceAll("${LOOPHAUS_ROOT}", pluginDir),
+        "utf-8",
+      );
     }
   }
 

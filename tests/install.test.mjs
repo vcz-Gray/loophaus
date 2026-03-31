@@ -84,12 +84,26 @@ describe("loophaus CLI", () => {
     );
     expect(hooksJson.hooks.Stop).toHaveLength(1);
     expect(hooksJson.hooks.Stop[0].hooks[0].command).toContain("loophaus");
+    // New skill names
+    expect(
+      await fileExists(join(codexHome, "skills", "loop", "SKILL.md")),
+    ).toBe(true);
+    expect(
+      await fileExists(join(codexHome, "skills", "loop-stop", "SKILL.md")),
+    ).toBe(true);
+    expect(
+      await fileExists(join(codexHome, "skills", "loop-plan", "SKILL.md")),
+    ).toBe(true);
+    expect(
+      await fileExists(join(codexHome, "skills", "loop-pulse", "SKILL.md")),
+    ).toBe(true);
+    // Legacy skills should NOT exist
     expect(
       await fileExists(join(codexHome, "skills", "ralph-loop", "SKILL.md")),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       await fileExists(join(codexHome, "skills", "cancel-ralph", "SKILL.md")),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("hooks.json merge preserves existing hooks", async () => {
