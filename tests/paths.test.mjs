@@ -6,6 +6,8 @@ import {
   getHooksJsonPath,
   getPluginInstallDir,
   getSkillsDir,
+  getAgentsHome,
+  getAgentsSkillsDir,
   isWindows,
 } from "../lib/paths.mjs";
 
@@ -50,6 +52,17 @@ describe("paths.mjs", () => {
     originalCodexHome = process.env.CODEX_HOME;
     delete process.env.CODEX_HOME;
     expect(getSkillsDir()).toMatch(/skills$/);
+  });
+
+  it("getAgentsHome returns ~/.agents", () => {
+    const result = getAgentsHome();
+    expect(result).toContain(".agents");
+    expect(result.startsWith(homedir())).toBe(true);
+  });
+
+  it("getAgentsSkillsDir ends with skills", () => {
+    const result = getAgentsSkillsDir();
+    expect(result).toMatch(/\.agents[/\\]skills$/);
   });
 
   it("isWindows returns boolean", () => {

@@ -12,6 +12,7 @@ import {
   getClaudePluginCacheDir,
   getClaudeSettingsPath,
   getClaudeInstalledPluginsPath,
+  getAgentsSkillsDir,
 } from "../lib/paths.mjs";
 import { getStatePath } from "../lib/state.mjs";
 
@@ -198,6 +199,21 @@ export async function uninstall({
       log(">", `Remove skill: ${skillDir}`);
       if (!dryRun) {
         await rm(skillDir, { recursive: true, force: true });
+      }
+    }
+  }
+
+  // 3b. Remove skills from ~/.agents/skills/ (new Codex CLI standard path)
+  if (!local) {
+    const agentsSkillsDir = getAgentsSkillsDir();
+    const agentsSkillNames = ["loop", "loop-stop", "loop-plan", "loop-pulse"];
+    for (const name of agentsSkillNames) {
+      const skillDir = join(agentsSkillsDir, name);
+      if (await fileExists(skillDir)) {
+        log(">", `Remove agents skill: ${skillDir}`);
+        if (!dryRun) {
+          await rm(skillDir, { recursive: true, force: true });
+        }
       }
     }
   }

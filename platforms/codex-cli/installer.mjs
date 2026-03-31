@@ -7,6 +7,8 @@ import {
   getHooksJsonPath,
   getPluginInstallDir,
   getSkillsDir,
+  getAgentsHome,
+  getAgentsSkillsDir,
 } from "../../lib/paths.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,7 +19,7 @@ async function fileExists(p) {
 }
 
 export async function detect() {
-  return fileExists(getCodexHome());
+  return (await fileExists(getCodexHome())) || (await fileExists(getAgentsHome()));
 }
 
 // Legacy ralph-* skill names to clean up
@@ -143,8 +145,10 @@ export async function install({ dryRun = false, force = false, local = false } =
     }
   }
 
+  const totalSteps = local ? 4 : 5;
+
   // Step 1: Clean up legacy ralph-* skills
-  console.log("[1/4] Cleaning up legacy skills...");
+  console.log(`[1/${totalSteps}] Cleaning up legacy skills...`);
   for (const name of LEGACY_SKILLS) {
     const legacyDir = join(skillsDir, name);
     if (await fileExists(legacyDir)) {
@@ -156,7 +160,7 @@ export async function install({ dryRun = false, force = false, local = false } =
   }
 
   // Step 2: Copy files
-  console.log("[2/4] Copying plugin files...");
+  console.log(`[2/${totalSteps}] Copying plugin files...`);
   for (const dir of ["hooks", "codex/commands", "lib", "core", "store"]) {
     const src = join(PROJECT_ROOT, dir);
     if (!(await fileExists(src))) continue;
@@ -171,7 +175,7 @@ export async function install({ dryRun = false, force = false, local = false } =
   if (!dryRun) await cp(join(PROJECT_ROOT, "package.json"), join(pluginDir, "package.json"));
 
   // Step 3: Hooks
-  console.log("[3/4] Configuring Stop hook...");
+  console.log(`[3/${totalSteps}] Configuring Stop hook...`);
   const stopCmd = `node "${join(pluginDir, "hooks", "stop-hook.mjs")}"`;
   let existing = { hooks: {} };
   if (await fileExists(hooksJsonPath)) {
@@ -188,8 +192,8 @@ export async function install({ dryRun = false, force = false, local = false } =
     await writeFile(hooksJsonPath, JSON.stringify(existing, null, 2), "utf-8");
   }
 
-  // Step 4: Install new skills (loop, loop-stop, loop-plan, loop-pulse)
-  console.log("[4/4] Installing skills...");
+  // Step 4: Install skills to ~/.codex/skills/
+  console.log(`[4/${totalSteps}] Installing skills to ~/.codex/skills/...`);
   for (const [name, skill] of Object.entries(CODEX_SKILLS)) {
     const skillDir = join(skillsDir, name);
     console.log(`  > Install skill: ${name}`);
@@ -200,6 +204,24 @@ export async function install({ dryRun = false, force = false, local = false } =
         skill.content.replaceAll("${RALPH_CODEX_ROOT}", pluginDir).replaceAll("${LOOPHAUS_ROOT}", pluginDir),
         "utf-8",
       );
+    }
+  }
+
+  // Step 5: Mirror skills to ~/.agents/skills/ (new Codex CLI standard path)
+  if (!local) {
+    const agentsSkillsDir = getAgentsSkillsDir();
+    console.log(`[5/${totalSteps}] Installing skills to ~/.agents/skills/...`);
+    for (const [name, skill] of Object.entries(CODEX_SKILLS)) {
+      const skillDir = join(agentsSkillsDir, name);
+      console.log(`  > Install skill: ${name}`);
+      if (!dryRun) {
+        await mkdir(skillDir, { recursive: true });
+        await writeFile(
+          join(skillDir, "SKILL.md"),
+          skill.content.replaceAll("${RALPH_CODEX_ROOT}", pluginDir).replaceAll("${LOOPHAUS_ROOT}", pluginDir),
+          "utf-8",
+        );
+      }
     }
   }
 
