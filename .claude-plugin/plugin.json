@@ -1,7 +1,7 @@
 {
   "name": "loophaus",
   "description": "loophaus — Control plane for coding agents",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": {
     "name": "graypark",
     "email": "vcz.graypark@gmail.com"
