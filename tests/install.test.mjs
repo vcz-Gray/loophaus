@@ -84,25 +84,21 @@ describe("loophaus CLI", () => {
     );
     expect(hooksJson.hooks.Stop).toHaveLength(1);
     expect(hooksJson.hooks.Stop[0].hooks[0].command).toContain("loophaus");
-    // New skill names
+    // Skills installed to ~/.agents/skills/ (new standard path)
+    const { getAgentsSkillsDir } = await import("../lib/paths.mjs");
+    const agentsSkills = getAgentsSkillsDir();
     expect(
-      await fileExists(join(codexHome, "skills", "loop", "SKILL.md")),
+      await fileExists(join(agentsSkills, "loop", "SKILL.md")),
     ).toBe(true);
     expect(
-      await fileExists(join(codexHome, "skills", "loop-stop", "SKILL.md")),
+      await fileExists(join(agentsSkills, "loop-stop", "SKILL.md")),
     ).toBe(true);
-    expect(
-      await fileExists(join(codexHome, "skills", "loop-plan", "SKILL.md")),
-    ).toBe(true);
-    expect(
-      await fileExists(join(codexHome, "skills", "loop-pulse", "SKILL.md")),
-    ).toBe(true);
-    // Legacy skills should NOT exist
+    // Legacy skills cleaned from ~/.codex/skills/
     expect(
       await fileExists(join(codexHome, "skills", "ralph-loop", "SKILL.md")),
     ).toBe(false);
     expect(
-      await fileExists(join(codexHome, "skills", "cancel-ralph", "SKILL.md")),
+      await fileExists(join(codexHome, "skills", "loop", "SKILL.md")),
     ).toBe(false);
   });
 

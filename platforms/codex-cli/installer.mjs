@@ -145,14 +145,15 @@ export async function install({ dryRun = false, force = false, local = false } =
     }
   }
 
-  const totalSteps = local ? 4 : 5;
+  const totalSteps = 4;
 
-  // Step 1: Clean up legacy ralph-* skills
+  // Step 1: Clean up legacy skills from ~/.codex/skills/
   console.log(`[1/${totalSteps}] Cleaning up legacy skills...`);
-  for (const name of LEGACY_SKILLS) {
+  const CLEANUP_FROM_CODEX = [...LEGACY_SKILLS, "loop", "loop-stop", "loop-plan", "loop-pulse"];
+  for (const name of CLEANUP_FROM_CODEX) {
     const legacyDir = join(skillsDir, name);
     if (await fileExists(legacyDir)) {
-      console.log(`  > Remove legacy skill: ${name}`);
+      console.log(`  > Remove from ~/.codex/skills/: ${name}`);
       if (!dryRun) {
         await rm(legacyDir, { recursive: true, force: true });
       }
@@ -192,10 +193,13 @@ export async function install({ dryRun = false, force = false, local = false } =
     await writeFile(hooksJsonPath, JSON.stringify(existing, null, 2), "utf-8");
   }
 
-  // Step 4: Install skills to ~/.codex/skills/
-  console.log(`[4/${totalSteps}] Installing skills to ~/.codex/skills/...`);
+  // Step 4: Install skills to standard path
+  // Global: ~/.agents/skills/ (new Codex CLI standard — avoids duplicates with ~/.codex/skills/)
+  // Local: .codex/skills/ (project-scoped)
+  const targetSkillsDir = local ? skillsDir : getAgentsSkillsDir();
+  console.log(`[4/${totalSteps}] Installing skills to ${local ? ".codex/skills/" : "~/.agents/skills/"}...`);
   for (const [name, skill] of Object.entries(CODEX_SKILLS)) {
-    const skillDir = join(skillsDir, name);
+    const skillDir = join(targetSkillsDir, name);
     console.log(`  > Install skill: ${name}`);
     if (!dryRun) {
       await mkdir(skillDir, { recursive: true });
@@ -204,24 +208,6 @@ export async function install({ dryRun = false, force = false, local = false } =
         skill.content.replaceAll("${RALPH_CODEX_ROOT}", pluginDir).replaceAll("${LOOPHAUS_ROOT}", pluginDir),
         "utf-8",
       );
-    }
-  }
-
-  // Step 5: Mirror skills to ~/.agents/skills/ (new Codex CLI standard path)
-  if (!local) {
-    const agentsSkillsDir = getAgentsSkillsDir();
-    console.log(`[5/${totalSteps}] Installing skills to ~/.agents/skills/...`);
-    for (const [name, skill] of Object.entries(CODEX_SKILLS)) {
-      const skillDir = join(agentsSkillsDir, name);
-      console.log(`  > Install skill: ${name}`);
-      if (!dryRun) {
-        await mkdir(skillDir, { recursive: true });
-        await writeFile(
-          join(skillDir, "SKILL.md"),
-          skill.content.replaceAll("${RALPH_CODEX_ROOT}", pluginDir).replaceAll("${LOOPHAUS_ROOT}", pluginDir),
-          "utf-8",
-        );
-      }
     }
   }
 
