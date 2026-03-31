@@ -104,10 +104,18 @@ export async function install({ dryRun = false, force = false } = {}) {
         skills: "./skills/",
       }],
     }, null, 2), "utf-8");
-    await cp(
-      join(PROJECT_ROOT, ".claude-plugin", "plugin.json"),
-      join(mpDir, "plugin.json"),
-    );
+    // Copy plugin.json and patch version dynamically
+    const pluginJson = JSON.parse(await readFile(join(PROJECT_ROOT, ".claude-plugin", "plugin.json"), "utf-8"));
+    pluginJson.version = version;
+    await writeFile(join(mpDir, "plugin.json"), JSON.stringify(pluginJson, null, 2), "utf-8");
+
+    // Also patch the cached copy
+    const cachedPluginJson = join(cacheDir, ".claude-plugin", "plugin.json");
+    if (await fileExists(cachedPluginJson)) {
+      const cached = JSON.parse(await readFile(cachedPluginJson, "utf-8"));
+      cached.version = version;
+      await writeFile(cachedPluginJson, JSON.stringify(cached, null, 2), "utf-8");
+    }
   }
 
   // Step 3: installed_plugins.json
