@@ -15,6 +15,10 @@ export const EventType = {
   CHECKPOINT: "checkpoint",
   ERROR: "error",
   STATE_CHANGE: "state_change",
+  QUALITY_SCORE: "quality_score",
+  REFINE_ATTEMPT: "refine_attempt",
+  REFINE_KEEP: "refine_keep",
+  REFINE_DISCARD: "refine_discard",
 };
 
 export function filterByType(events, type) {

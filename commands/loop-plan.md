@@ -172,7 +172,59 @@ Single loop, no worktrees:
 3. Each iteration: implement one story, verify, commit, update prd.json.
 4. Output `<promise>TASK COMPLETE</promise>` when ALL stories pass.
 
-## Phase 5: Summary Report
+## Phase 5: Evaluate
+
+After all stories are implemented (parallel or sequential), evaluate each:
+
+For each story in prd.json:
+1. Run testCommand if defined
+2. Run typecheck if project has tsconfig.json: `npx tsc --noEmit`
+3. Run lint if project has eslint config: `npx eslint . --quiet`
+4. Check .loophaus/verify.sh if exists
+5. Analyze git diff size
+
+Score each story 0-100. Record in `.loophaus/results.tsv`.
+
+Display quality dashboard:
+```
+Quality Evaluation
+──────────────────
+  US-001  Add login API        score: 65  (D) <- needs refinement
+  US-002  Add auth middleware   score: 92  (A) ✓
+  US-003  Add login UI         score: 45  (F) <- needs refinement
+
+Overall: 67/100 — threshold: 80
+Stories needing refinement: 2
+```
+
+## Phase 6: Refine Loop (autoresearch pattern)
+
+For each story below the quality threshold (default: 80):
+
+LOOP (max 3 attempts per story):
+  1. Git checkpoint: `git add -A && git commit -m "checkpoint: <story-id> attempt <N>"`
+  2. Read the quality feedback (which criteria failed, error messages)
+  3. Re-implement with a different approach, focusing on weak areas
+  4. Re-evaluate (same criteria as Phase 5)
+  5. If score improved -> KEEP (advance the commit)
+     If score same or worse -> DISCARD (git reset --hard to checkpoint)
+  6. Record attempt in .loophaus/results.tsv
+  7. If score >= threshold -> DONE with this story
+     If max attempts reached -> move on (best-effort)
+
+After all refinements:
+```
+Refinement Complete
+───────────────────
+  US-001  65 -> 82 (B) ✓  (2 attempts)
+  US-003  45 -> 78 (C)    (3 attempts, best effort)
+
+Overall: 84/100 — PASS
+```
+
+CRITICAL: The refine loop uses git reset --hard to discard bad attempts. This is the autoresearch pattern — safe because we always checkpoint first.
+
+## Phase 7: Summary Report
 
 After completion (parallel or sequential), output:
 

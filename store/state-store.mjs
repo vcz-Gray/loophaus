@@ -9,6 +9,9 @@ const DEFAULT_STATE = {
   maxIterations: 20,
   currentIteration: 0,
   sessionId: "",
+  qualityThreshold: 80,
+  maxRefineAttempts: 3,
+  qualityConfig: null,
 };
 
 export function getStatePath(cwd, name) {

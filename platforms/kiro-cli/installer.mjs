@@ -84,6 +84,14 @@ Score >= 3: parallel (worktrees). Score < 3: sequential.
 Parallel: create worktrees per group, distribute stories, run simultaneously, merge back.
 Sequential: single loop through stories in order.
 
+## Phase 5: Evaluate
+Score each story 0-100 (tests, typecheck, lint, verify, diff size). Record in \`.loophaus/results.tsv\`.
+
+## Phase 6: Refine Loop (autoresearch pattern)
+For stories below quality threshold (default 80), loop up to 3 attempts:
+1. Checkpoint, 2. Re-implement weak areas, 3. Re-evaluate.
+Keep if improved, discard (git reset) if not. Best-effort after max attempts.
+
 Rules: present PRD for approval, show parallelism score, stop on merge conflicts.
 `,
   },

@@ -14,6 +14,9 @@ const STATE_OPTIONAL = {
   verifyScript: "string",
   startedAt: "string",
   cost: "object",
+  qualityThreshold: "number",
+  maxRefineAttempts: "number",
+  qualityConfig: "object",
 };
 
 export function validateState(obj) {

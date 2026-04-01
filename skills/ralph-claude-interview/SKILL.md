@@ -30,6 +30,8 @@ Ask **concise questions** for missing items. Max 3-5 per round, one round only.
 | **Constraints**           | Must not break existing tests? Library restrictions? |
 | **When stuck**            | Document? Skip? Suggest alternative?                 |
 | **Parallelism potential** | Multiple services? Independent file groups?          |
+| **Quality verification**  | What verification commands? (npm test, npx tsc, etc.) |
+| **Quality threshold**     | What quality threshold? (default: 80/100)            |
 
 ## Phase Design
 

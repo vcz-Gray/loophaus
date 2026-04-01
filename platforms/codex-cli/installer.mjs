@@ -112,6 +112,14 @@ Score >= 3: parallel mode (worktrees by group). Score < 3: sequential mode.
 ## Phase 4B: Sequential Execution (score < 3)
 Create \`.loophaus/state.json\` and work through stories one at a time.
 
+## Phase 5: Evaluate
+Score each story 0-100 (tests, typecheck, lint, verify, diff size). Record in \`.loophaus/results.tsv\`.
+
+## Phase 6: Refine Loop (autoresearch pattern)
+For stories below quality threshold (default 80), loop up to 3 attempts:
+1. Checkpoint, 2. Re-implement weak areas, 3. Re-evaluate.
+Keep if improved, discard (git reset) if not. Best-effort after max attempts.
+
 ## Rules
 - Present PRD for user approval before execution
 - Show parallelism score and recommendation

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // loophaus CLI — install, status, stats, uninstall
 
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { access } from "node:fs/promises";
 
@@ -46,6 +46,7 @@ Usage:
   npx @graypark/loophaus loops
   npx @graypark/loophaus worktree <create|remove|list>
   npx @graypark/loophaus parallel <prd.json> [--count N] [--base branch]
+  npx @graypark/loophaus quality [--story US-001]
   npx @graypark/loophaus sessions
   npx @graypark/loophaus resume <session-id>
   npx @graypark/loophaus --version
@@ -448,6 +449,48 @@ async function runParallelCmd() {
   }
 }
 
+async function runQuality() {
+  const storyId = getFlag("--story");
+  const cwd = process.cwd();
+
+  if (storyId) {
+    const { evaluateStory } = await import("../core/quality-scorer.mjs");
+    const { read } = await import("../store/state-store.mjs");
+    const state = await read(cwd);
+    const config = state.qualityConfig || {};
+
+    if (!config.typecheckCommand) {
+      try { await access(join(cwd, "tsconfig.json")); config.typecheckCommand = "npx tsc --noEmit"; } catch {}
+    }
+
+    const result = await evaluateStory(storyId, cwd, config);
+    console.log(`Quality: ${storyId}`);
+    console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+    console.log(`Score: ${result.score}/100 (${result.grade})`);
+    for (const [k, v] of Object.entries(result.breakdown)) {
+      const bar = "\u2588".repeat(v) + "\u2591".repeat(10 - v);
+      console.log(`  ${k.padEnd(10)} ${bar} ${v}/10`);
+    }
+  } else {
+    const { readResults } = await import("../core/quality-scorer.mjs");
+    const results = await readResults(cwd);
+    if (results.length === 0) { console.log("No quality results yet. Run /loop-plan first."); return; }
+
+    console.log("Quality Results");
+    console.log("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550");
+    const byStory = {};
+    for (const r of results) {
+      if (!byStory[r.storyId]) byStory[r.storyId] = [];
+      byStory[r.storyId].push(r);
+    }
+    for (const [sid, attempts] of Object.entries(byStory)) {
+      const best = attempts.reduce((a, b) => a.score > b.score ? a : b);
+      const icon = best.status === "keep" ? "\u2713" : best.status === "discard" ? "\u2717" : "~";
+      console.log(`  ${icon} ${sid}  score: ${best.score}  (${attempts.length} attempts)`);
+    }
+  }
+}
+
 try {
   switch (command) {
     case "install": await runInstall(); break;
@@ -460,6 +503,7 @@ try {
     case "compare": await runCompare(); break;
     case "worktree": await runWorktree(); break;
     case "parallel": await runParallelCmd(); break;
+    case "quality": await runQuality(); break;
     case "sessions": await runSessions(); break;
     case "resume": await runResume(); break;
     default:
