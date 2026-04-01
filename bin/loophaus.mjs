@@ -40,6 +40,9 @@ Usage:
   npx @graypark/loophaus uninstall [--host <name>]
   npx @graypark/loophaus status [--name <loop>]
   npx @graypark/loophaus stats [--name <loop>]
+  npx @graypark/loophaus watch
+  npx @graypark/loophaus replay <trace-file> [--speed 2]
+  npx @graypark/loophaus compare <trace1> <trace2>
   npx @graypark/loophaus loops
   npx @graypark/loophaus --version
 
@@ -202,6 +205,172 @@ async function runStats() {
   console.log(`Trace file:       .loophaus/trace.jsonl (${events.length} events)`);
 }
 
+async function runWatch() {
+  const { getTracePath } = await import("../core/event-logger.mjs");
+  const { watch: fsWatch } = await import("node:fs");
+  const { readFile, stat } = await import("node:fs/promises");
+  const tracePath = getTracePath();
+
+  console.log(`Watching ${tracePath}...`);
+  console.log("(Ctrl+C to stop)\n");
+
+  let lastSize = 0;
+  try {
+    const s = await stat(tracePath);
+    lastSize = s.size;
+  } catch { /* file doesn't exist yet */ }
+
+  const COLORS = {
+    iteration: "\x1b[36m",
+    stop: "\x1b[31m",
+    continue: "\x1b[32m",
+    error: "\x1b[31m",
+    cost: "\x1b[33m",
+    state_change: "\x1b[35m",
+    verify_script: "\x1b[32m",
+    verify_failed: "\x1b[31m",
+    story_complete: "\x1b[32m",
+    loop_start: "\x1b[36m",
+    loop_end: "\x1b[36m",
+  };
+  const RESET = "\x1b[0m";
+
+  function printEvent(line) {
+    try {
+      const e = JSON.parse(line);
+      const color = COLORS[e.event] || "";
+      const time = e.ts ? new Date(e.ts).toLocaleTimeString() : "";
+      const detail = e.iteration ? ` iter=${e.iteration}` : e.reason ? ` reason=${e.reason}` : "";
+      console.log(`${color}[${time}] ${e.event}${detail}${RESET}`);
+    } catch { /* skip malformed */ }
+  }
+
+  try {
+    const raw = await readFile(tracePath, "utf-8");
+    const lines = raw.trim().split("\n").slice(-20);
+    for (const line of lines) printEvent(line);
+    if (lines.length > 0) console.log("--- live ---\n");
+  } catch { /* no file yet */ }
+
+  const { dirname: pathDirname } = await import("node:path");
+  const dir = pathDirname(tracePath);
+  try {
+    fsWatch(dir, { recursive: false }, async () => {
+      try {
+        const s = await stat(tracePath);
+        if (s.size > lastSize) {
+          const raw = await readFile(tracePath, "utf-8");
+          const lines = raw.trim().split("\n");
+          const newLines = [];
+          let pos = 0;
+          for (const line of lines) {
+            pos += Buffer.byteLength(line + "\n");
+            if (pos > lastSize) newLines.push(line);
+          }
+          for (const line of newLines) printEvent(line);
+          lastSize = s.size;
+        }
+      } catch { /* read error */ }
+    });
+  } catch {
+    console.log("Cannot watch file. Make sure .loophaus/ directory exists.");
+    process.exit(1);
+  }
+
+  process.stdin.resume();
+}
+
+async function runReplay() {
+  const file = args[1];
+  if (!file) {
+    console.log("Usage: loophaus replay <trace-file> [--speed 2]");
+    process.exit(1);
+  }
+  const speedRaw = getFlag("--speed") || "1";
+  const speed = speedRaw === "instant" ? 999999 : (parseFloat(speedRaw) || 1);
+  const speedLabel = speed >= 999999 ? "instant" : `${speed}x`;
+
+  const { readTrace } = await import("../core/event-logger.mjs");
+  const { replayTrace, analyzeTrace } = await import("../core/trace-analyzer.mjs");
+
+  let events;
+  if (file === ".loophaus/trace.jsonl" || file === "trace.jsonl") {
+    events = await readTrace();
+  } else {
+    const { readFile } = await import("node:fs/promises");
+    const raw = await readFile(file, "utf-8");
+    events = raw.trim().split("\n").map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+  }
+
+  if (events.length === 0) { console.log("No events found."); return; }
+
+  const replayed = replayTrace(events, speed);
+  const analysis = analyzeTrace(events);
+
+  console.log(`Replaying ${events.length} events (${speedLabel})\n`);
+
+  const COLORS = { iteration: "\x1b[36m", stop: "\x1b[31m", continue: "\x1b[32m", error: "\x1b[31m", cost: "\x1b[33m", state_change: "\x1b[35m", verify_script: "\x1b[32m", verify_failed: "\x1b[31m", story_complete: "\x1b[32m", loop_start: "\x1b[36m", loop_end: "\x1b[36m" };
+  const RESET = "\x1b[0m";
+
+  let prevMs = 0;
+  for (const e of replayed) {
+    const delay = speed >= 999999 ? 0 : e.relativeMs - prevMs;
+    if (delay > 0) await new Promise(r => setTimeout(r, delay));
+    prevMs = e.relativeMs;
+
+    const color = COLORS[e.event] || "";
+    const time = e.ts ? new Date(e.ts).toLocaleTimeString() : "";
+    const detail = e.iteration ? ` iter=${e.iteration}` : e.reason ? ` reason=${e.reason}` : "";
+    console.log(`${color}[${time}] ${e.event}${detail}${RESET}`);
+  }
+
+  console.log(`\n--- Summary ---`);
+  console.log(`Iterations: ${analysis.iterations}`);
+  console.log(`Duration: ${Math.round(analysis.durationMs / 1000)}s`);
+  if (analysis.totalCost > 0) console.log(`Cost: $${analysis.totalCost.toFixed(4)}`);
+  if (analysis.lastStopReason) console.log(`Stop reason: ${analysis.lastStopReason}`);
+}
+
+async function runCompare() {
+  const file1 = args[1];
+  const file2 = args[2];
+  if (!file1 || !file2) {
+    console.log("Usage: loophaus compare <trace1> <trace2>");
+    process.exit(1);
+  }
+
+  const { readFile } = await import("node:fs/promises");
+  const { compareTraces } = await import("../core/trace-analyzer.mjs");
+
+  function loadTrace(file) {
+    return readFile(file, "utf-8").then(raw =>
+      raw.trim().split("\n").map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean)
+    );
+  }
+
+  const [t1, t2] = await Promise.all([loadTrace(file1), loadTrace(file2)]);
+  const result = compareTraces(t1, t2);
+
+  console.log("Loop Comparison");
+  console.log("═══════════════\n");
+
+  const fmt = (label, v1, v2, diff, unit = "") => {
+    const arrow = diff > 0 ? `+${diff}` : `${diff}`;
+    const color = diff > 0 ? "\x1b[31m" : diff < 0 ? "\x1b[32m" : "";
+    const reset = "\x1b[0m";
+    console.log(`  ${label.padEnd(20)} ${String(v1).padStart(8)}${unit}  vs  ${String(v2).padStart(8)}${unit}  ${color}(${arrow}${unit})${reset}`);
+  };
+
+  fmt("Iterations", result.trace1.iterations, result.trace2.iterations, result.diff.iterations);
+  fmt("Duration", Math.round(result.trace1.durationMs / 1000), Math.round(result.trace2.durationMs / 1000), Math.round(result.diff.durationMs / 1000), "s");
+  fmt("Stories done", result.trace1.storiesCompleted, result.trace2.storiesCompleted, result.diff.storiesCompleted);
+  if (result.trace1.totalCost || result.trace2.totalCost) {
+    fmt("Cost", result.trace1.totalCost.toFixed(4), result.trace2.totalCost.toFixed(4), result.diff.totalCost.toFixed(4), "$");
+  }
+  fmt("Errors", result.trace1.errors, result.trace2.errors, result.diff.errors);
+  console.log("");
+}
+
 try {
   switch (command) {
     case "install": await runInstall(); break;
@@ -209,6 +378,9 @@ try {
     case "status": await runStatus(); break;
     case "stats": await runStats(); break;
     case "loops": await runLoops(); break;
+    case "watch": await runWatch(); break;
+    case "replay": await runReplay(); break;
+    case "compare": await runCompare(); break;
     default:
       if (command.startsWith("-")) {
         await runInstall();
