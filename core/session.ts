@@ -85,8 +85,8 @@ export async function resumeSession(sessionId: string, cwd?: string): Promise<Re
   const checkpoint = await loadCheckpoint(sessionId, cwd) as ResumeCheckpoint | null;
   if (!checkpoint) return null;
 
-  // @ts-expect-error store/state-store.mjs will be converted to .ts in US-008
-  const { write } = await import("../store/state-store.mjs") as { write: (state: ResumedState, cwd?: string, name?: string) => Promise<void> };
+  const stateStore = await import("../store/state-store.js");
+  const write = stateStore.write as unknown as (state: ResumedState, cwd?: string, name?: string) => Promise<void>;
   const state: ResumedState = {
     active: true,
     prompt: checkpoint.prompt || "",

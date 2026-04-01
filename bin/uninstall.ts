@@ -13,16 +13,34 @@ import {
   getClaudeSettingsPath,
   getClaudeInstalledPluginsPath,
   getAgentsSkillsDir,
-} from "../lib/paths.mjs";
-import { getStatePath } from "../store/state-store.mjs";
+} from "../lib/paths.js";
+import { getStatePath } from "../store/state-store.js";
 
 const RALPH_HOOK_MARKER = "loophaus";
 
-function log(icon, msg) {
+interface HookEntry {
+  hooks?: Array<{ command?: string }>;
+}
+
+interface HooksConfig {
+  hooks?: {
+    Stop?: HookEntry[];
+  };
+}
+
+interface PluginsData {
+  plugins?: Record<string, unknown>;
+}
+
+interface SettingsData {
+  enabledPlugins?: Record<string, unknown>;
+}
+
+function log(icon: string, msg: string): void {
   console.log(`  ${icon} ${msg}`);
 }
 
-async function fileExists(p) {
+async function fileExists(p: string): Promise<boolean> {
   try {
     await access(p);
     return true;
@@ -31,7 +49,11 @@ async function fileExists(p) {
   }
 }
 
-async function uninstallClaude({ dryRun = false } = {}) {
+interface UninstallClaudeOptions {
+  dryRun?: boolean;
+}
+
+async function uninstallClaude({ dryRun = false }: UninstallClaudeOptions = {}): Promise<void> {
   console.log("");
   console.log(
     `loophaus uninstaller — Claude Code${dryRun ? " (DRY RUN)" : ""}`,
@@ -54,7 +76,7 @@ async function uninstallClaude({ dryRun = false } = {}) {
   if (await fileExists(installedPluginsPath)) {
     try {
       const raw = await readFile(installedPluginsPath, "utf-8");
-      const data = JSON.parse(raw);
+      const data = JSON.parse(raw) as PluginsData;
       const pluginKey = "loophaus@loophaus-marketplace";
       if (data.plugins && data.plugins[pluginKey]) {
         delete data.plugins[pluginKey];
@@ -79,7 +101,7 @@ async function uninstallClaude({ dryRun = false } = {}) {
   if (await fileExists(settingsPath)) {
     try {
       const raw = await readFile(settingsPath, "utf-8");
-      const settings = JSON.parse(raw);
+      const settings = JSON.parse(raw) as SettingsData;
       const pluginKey = "loophaus@loophaus-marketplace";
       if (
         settings.enabledPlugins &&
@@ -111,11 +133,17 @@ async function uninstallClaude({ dryRun = false } = {}) {
   console.log("");
 }
 
+export interface UninstallOptions {
+  dryRun?: boolean;
+  local?: boolean;
+  claude?: boolean;
+}
+
 export async function uninstall({
   dryRun = false,
   local = false,
   claude = false,
-} = {}) {
+}: UninstallOptions = {}): Promise<void> {
   if (claude) {
     return uninstallClaude({ dryRun });
   }
@@ -134,11 +162,11 @@ export async function uninstall({
   if (await fileExists(hooksJsonPath)) {
     try {
       const raw = await readFile(hooksJsonPath, "utf-8");
-      const config = JSON.parse(raw);
+      const config = JSON.parse(raw) as HooksConfig;
 
       if (config.hooks && Array.isArray(config.hooks.Stop)) {
         const before = config.hooks.Stop.length;
-        config.hooks.Stop = config.hooks.Stop.filter((entry) => {
+        config.hooks.Stop = config.hooks.Stop.filter((entry: HookEntry) => {
           const cmds = entry.hooks || [];
           return !cmds.some(
             (h) => h.command && h.command.includes(RALPH_HOOK_MARKER),
@@ -177,7 +205,7 @@ export async function uninstall({
   }
 
   // 3. Remove skill directories (both legacy ralph-* and new loop-* names)
-  const skillNames = [
+  const skillNames: string[] = [
     // New skill names
     "loop",
     "loop-stop",
@@ -206,7 +234,7 @@ export async function uninstall({
   // 3b. Remove skills from ~/.agents/skills/ (new Codex CLI standard path)
   if (!local) {
     const agentsSkillsDir = getAgentsSkillsDir();
-    const agentsSkillNames = ["loop", "loop-stop", "loop-plan", "loop-pulse"];
+    const agentsSkillNames: string[] = ["loop", "loop-stop", "loop-plan", "loop-pulse"];
     for (const name of agentsSkillNames) {
       const skillDir = join(agentsSkillsDir, name);
       if (await fileExists(skillDir)) {
@@ -240,15 +268,16 @@ export async function uninstall({
 const isDirectRun =
   process.argv[1] &&
   (process.argv[1].endsWith("uninstall.mjs") ||
+    process.argv[1].endsWith("uninstall.js") ||
     process.argv[1].endsWith("uninstall"));
 
 if (isDirectRun) {
-  const args = process.argv.slice(2);
-  const dryRun = args.includes("--dry-run");
-  const local = args.includes("--local");
-  const claude = args.includes("--claude");
+  const cliArgs = process.argv.slice(2);
+  const dryRun = cliArgs.includes("--dry-run");
+  const local = cliArgs.includes("--local");
+  const claude = cliArgs.includes("--claude");
 
-  uninstall({ dryRun, local, claude }).catch((err) => {
+  uninstall({ dryRun, local, claude }).catch((err: Error) => {
     console.error(`\u2718 Uninstall failed: ${err.message}`);
     process.exit(1);
   });

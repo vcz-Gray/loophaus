@@ -9,7 +9,7 @@ import {
   getAgentsHome,
   getAgentsSkillsDir,
   isWindows,
-} from "../lib/paths.mjs";
+} from "../lib/paths.js";
 
 let originalCodexHome;
 

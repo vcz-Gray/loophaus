@@ -9,7 +9,7 @@ import {
   getClaudeSettingsPath,
   getClaudeInstalledPluginsPath,
   getPackageVersion,
-} from "../../lib/paths.mjs";
+} from "../../lib/paths.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(__filename), "../..");
@@ -168,6 +168,6 @@ export async function install({ dryRun = false, force = false } = {}) {
 }
 
 export async function uninstall({ dryRun = false } = {}) {
-  const { uninstall: doUninstall } = await import("../../bin/uninstall.mjs");
+  const { uninstall: doUninstall } = await import("../../bin/uninstall.js");
   return doUninstall({ dryRun, claude: true });
 }

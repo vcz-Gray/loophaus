@@ -1,20 +1,28 @@
 import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { validateState } from "../core/validate.js";
+import type { LoopState, QualityConfig } from "../core/types.js";
 
-const DEFAULT_STATE = {
+export interface StateStoreData extends LoopState {
+  qualityThreshold: number;
+  maxRefineAttempts: number;
+  qualityConfig: QualityConfig | null;
+}
+
+const DEFAULT_STATE: StateStoreData = {
   active: false,
   prompt: "",
   completionPromise: "TADA",
   maxIterations: 20,
   currentIteration: 0,
   sessionId: "",
+  verifyScript: "",
   qualityThreshold: 80,
   maxRefineAttempts: 3,
   qualityConfig: null,
 };
 
-export function getStatePath(cwd, name) {
+export function getStatePath(cwd?: string, name?: string): string {
   if (process.env.LOOPHAUS_STATE_FILE) return process.env.LOOPHAUS_STATE_FILE;
   if (process.env.RALPH_STATE_FILE) return process.env.RALPH_STATE_FILE;
   const base = cwd || process.cwd();
@@ -22,17 +30,17 @@ export function getStatePath(cwd, name) {
   return join(base, ".loophaus", "state.json");
 }
 
-const LEGACY_PATHS = [
-  (cwd) => join(cwd, ".codex", "ralph-loop.state.json"),
-  (cwd) => join(cwd, ".claude", "ralph-loop.local.md"),
+const LEGACY_PATHS: Array<(cwd: string) => string> = [
+  (cwd: string) => join(cwd, ".codex", "ralph-loop.state.json"),
+  (cwd: string) => join(cwd, ".claude", "ralph-loop.local.md"),
 ];
 
-export async function read(cwd, name) {
+export async function read(cwd?: string, name?: string): Promise<StateStoreData> {
   const primary = getStatePath(cwd, name);
 
   try {
     const raw = await readFile(primary, "utf-8");
-    const state = { ...DEFAULT_STATE, ...JSON.parse(raw) };
+    const state: StateStoreData = { ...DEFAULT_STATE, ...JSON.parse(raw) };
     const result = validateState(state);
     if (!result.valid) {
       process.stderr.write(`loophaus: state validation warning: ${result.errors.join(", ")}\n`);
@@ -59,7 +67,7 @@ export async function read(cwd, name) {
   return { ...DEFAULT_STATE };
 }
 
-export async function write(state, cwd, name) {
+export async function write(state: StateStoreData, cwd?: string, name?: string): Promise<void> {
   const result = validateState(state);
   if (!result.valid) {
     process.stderr.write(`loophaus: writing invalid state: ${result.errors.join(", ")}\n`);
@@ -71,12 +79,12 @@ export async function write(state, cwd, name) {
   await rename(tmp, statePath);
 }
 
-export async function reset(cwd) {
+export async function reset(cwd?: string): Promise<void> {
   await write({ ...DEFAULT_STATE }, cwd);
 }
 
-function migrateMdFormat(raw) {
-  const state = { ...DEFAULT_STATE };
+function migrateMdFormat(raw: string): StateStoreData {
+  const state: StateStoreData = { ...DEFAULT_STATE };
   const lines = raw.split("\n");
   for (const line of lines) {
     const match = line.match(/^(\w+):\s*(.+)$/);
@@ -93,10 +101,10 @@ function migrateMdFormat(raw) {
 }
 
 // Backward-compatible exports (matching lib/state.mjs interface)
-export async function readState(cwd) { return read(cwd); }
-export async function writeState(state, cwd) { return write(state, cwd); }
-export async function resetState(cwd) { return reset(cwd); }
-export async function incrementIteration(cwd) {
+export async function readState(cwd?: string): Promise<StateStoreData> { return read(cwd); }
+export async function writeState(state: StateStoreData, cwd?: string): Promise<void> { return write(state, cwd); }
+export async function resetState(cwd?: string): Promise<void> { return reset(cwd); }
+export async function incrementIteration(cwd?: string): Promise<StateStoreData> {
   const state = await read(cwd);
   state.currentIteration += 1;
   await write(state, cwd);

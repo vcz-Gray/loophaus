@@ -17,18 +17,15 @@
     "access": "public"
   },
   "bin": {
-    "loophaus": "./bin/loophaus.mjs"
+    "loophaus": "./dist/bin/loophaus.js"
   },
   "files": [
-    "bin/",
+    "dist/",
     "hooks/",
     "commands/",
     "codex/",
-    "core/",
-    "store/",
     "platforms/",
     "scripts/",
-    "lib/",
     "skills/",
     ".claude-plugin/",
     "README.md",
@@ -36,10 +33,13 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run postbuild",
+    "postbuild": "node -e \"const fs=require('fs');const p=require('path');['platforms','hooks','codex','commands','scripts','skills','.claude-plugin'].forEach(d=>{const s=p.join(__dirname,d);const t=p.join(__dirname,'dist',d);if(fs.existsSync(s))fs.cpSync(s,t,{recursive:true})});['package.json','LICENSE','README.md','README.ko.md'].forEach(f=>{const s=p.join(__dirname,f);const t=p.join(__dirname,'dist',f);if(fs.existsSync(s))fs.cpSync(s,t)})\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "postinstall": "echo 'Run: npx loophaus --help'"
+    "postinstall": "echo 'Run: npx loophaus --help'",
+    "prepublishOnly": "npm run build",
+    "prepare": "npm run build"
   },
   "engines": {
     "node": ">=20.0.0"

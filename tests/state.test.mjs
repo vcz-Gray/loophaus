@@ -7,7 +7,7 @@ import {
   writeState,
   resetState,
   incrementIteration,
-} from "../store/state-store.mjs";
+} from "../store/state-store.js";
 
 let tempDir;
 

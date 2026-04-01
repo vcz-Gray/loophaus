@@ -4,19 +4,20 @@
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { access } from "node:fs/promises";
+import type { LoopEvent } from "../core/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = resolve(__dirname, "..");
 
-const args = process.argv.slice(2);
-const command = args[0] || "install";
-const dryRun = args.includes("--dry-run");
-const force = args.includes("--force");
-const local = args.includes("--local");
-const showHelp = args.includes("--help") || args.includes("-h");
+const args: string[] = process.argv.slice(2);
+const command: string = args[0] || "install";
+const dryRun: boolean = args.includes("--dry-run");
+const force: boolean = args.includes("--force");
+const local: boolean = args.includes("--local");
+const showHelp: boolean = args.includes("--help") || args.includes("-h");
 
-function getHost() {
+function getHost(): string | null {
   if (args.includes("--claude")) return "claude-code";
   if (args.includes("--kiro")) return "kiro-cli";
   const idx = args.indexOf("--host");
@@ -26,7 +27,7 @@ function getHost() {
 
 const host = getHost();
 
-function getFlag(flag) {
+function getFlag(flag: string): string | undefined {
   const idx = args.indexOf(flag);
   if (idx !== -1 && args[idx + 1] && !args[idx + 1].startsWith("-")) return args[idx + 1];
   return undefined;
@@ -71,13 +72,13 @@ Options:
 }
 
 if (args.includes("--version")) {
-  const { getPackageVersion } = await import("../lib/paths.mjs");
+  const { getPackageVersion } = await import("../lib/paths.js");
   console.log(getPackageVersion());
   process.exit(0);
 }
 
-async function detectHosts() {
-  const hosts = [];
+async function detectHosts(): Promise<string[]> {
+  const hosts: string[] = [];
   const { detect: detectClaude } = await import("../platforms/claude-code/installer.mjs");
   const { detect: detectCodex } = await import("../platforms/codex-cli/installer.mjs");
   const { detect: detectKiro } = await import("../platforms/kiro-cli/installer.mjs");
@@ -88,8 +89,8 @@ async function detectHosts() {
   return hosts;
 }
 
-async function runInstall() {
-  let targets = [];
+async function runInstall(): Promise<void> {
+  let targets: string[] = [];
 
   if (host) {
     targets = [host];
@@ -119,22 +120,22 @@ async function runInstall() {
   }
 }
 
-async function runUninstall() {
+async function runUninstall(): Promise<void> {
   if (host === "claude-code" || args.includes("--claude")) {
-    const { uninstall } = await import("./uninstall.mjs");
+    const { uninstall } = await import("./uninstall.js");
     await uninstall({ dryRun, claude: true });
   } else if (host === "kiro-cli" || args.includes("--kiro")) {
     const { uninstall } = await import("../platforms/kiro-cli/installer.mjs");
     await uninstall({ dryRun });
   } else {
-    const { uninstall } = await import("./uninstall.mjs");
+    const { uninstall } = await import("./uninstall.js");
     await uninstall({ dryRun, local });
   }
 }
 
-async function runStatus() {
+async function runStatus(): Promise<void> {
   const name = getFlag("--name");
-  const { read } = await import("../store/state-store.mjs");
+  const { read } = await import("../store/state-store.js");
   const state = await read(undefined, name);
   if (!state.active) {
     console.log(name ? `No active loop: ${name}` : "No active loop.");
@@ -152,9 +153,11 @@ async function runStatus() {
 
   try {
     const { readFile } = await import("node:fs/promises");
-    const prd = JSON.parse(await readFile("prd.json", "utf-8"));
+    const prd = JSON.parse(await readFile("prd.json", "utf-8")) as {
+      userStories?: Array<{ id: string; title: string; passes?: boolean }>;
+    };
     if (Array.isArray(prd.userStories)) {
-      const done = prd.userStories.filter(s => s.passes === true).length;
+      const done = prd.userStories.filter((s) => s.passes === true).length;
       const total = prd.userStories.length;
       console.log("");
       console.log("Stories");
@@ -168,29 +171,31 @@ async function runStatus() {
   } catch { /* no prd.json */ }
 }
 
-async function runLoops() {
-  const { listLoops } = await import("../core/loop-registry.mjs");
+async function runLoops(): Promise<void> {
+  const { listLoops } = await import("../core/loop-registry.js");
   const loops = await listLoops();
   if (loops.length === 0) { console.log("No active loops."); return; }
   console.log("Active Loops");
   console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
   for (const l of loops) {
     const status = l.active ? "active" : "done";
-    const iter = l.maxIterations > 0 ? `${l.currentIteration}/${l.maxIterations}` : `${l.currentIteration}`;
+    const maxIter = l.maxIterations as number || 0;
+    const curIter = l.currentIteration as number || 0;
+    const iter = maxIter > 0 ? `${curIter}/${maxIter}` : `${curIter}`;
     console.log(`  ${l.name}  [${status}]  iter ${iter}`);
   }
 }
 
-async function runStats() {
-  const { readTrace } = await import("../core/event-logger.mjs");
-  const { formatCost } = await import("../core/cost-tracker.mjs");
+async function runStats(): Promise<void> {
+  const { readTrace } = await import("../core/event-logger.js");
+  const { formatCost } = await import("../core/cost-tracker.js");
   const events = await readTrace();
   if (events.length === 0) {
     console.log("No trace data found. Run a loop first.");
     return;
   }
-  const iterations = events.filter(e => e.event === "iteration").length;
-  const stops = events.filter(e => e.event === "stop");
+  const iterations = events.filter((e) => e.event === "iteration").length;
+  const stops = events.filter((e) => e.event === "stop");
   const lastStop = stops[stops.length - 1];
   console.log(`Loop Stats`);
   console.log(`\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`);
@@ -201,17 +206,17 @@ async function runStats() {
     console.log(`Last stop at:     ${lastStop.ts || "unknown"}`);
   }
 
-  const costEvents = events.filter(e => e.event === "cost" || e.totalCost);
+  const costEvents = events.filter((e) => e.event === "cost" || e.totalCost);
   if (costEvents.length > 0) {
-    const totalCost = costEvents.reduce((s, e) => s + (e.totalCost || 0), 0);
+    const totalCost = costEvents.reduce((s, e) => s + ((e.totalCost as number) || 0), 0);
     console.log(`Estimated cost:   ${formatCost(totalCost)}`);
   }
 
   console.log(`Trace file:       .loophaus/trace.jsonl (${events.length} events)`);
 }
 
-async function runWatch() {
-  const { getTracePath } = await import("../core/event-logger.mjs");
+async function runWatch(): Promise<void> {
+  const { getTracePath } = await import("../core/event-logger.js");
   const { watch: fsWatch } = await import("node:fs");
   const { readFile, stat } = await import("node:fs/promises");
   const tracePath = getTracePath();
@@ -225,7 +230,7 @@ async function runWatch() {
     lastSize = s.size;
   } catch { /* file doesn't exist yet */ }
 
-  const COLORS = {
+  const COLORS: Record<string, string> = {
     iteration: "\x1b[36m",
     stop: "\x1b[31m",
     continue: "\x1b[32m",
@@ -240,11 +245,11 @@ async function runWatch() {
   };
   const RESET = "\x1b[0m";
 
-  function printEvent(line) {
+  function printEvent(line: string): void {
     try {
-      const e = JSON.parse(line);
-      const color = COLORS[e.event] || "";
-      const time = e.ts ? new Date(e.ts).toLocaleTimeString() : "";
+      const e = JSON.parse(line) as Record<string, unknown>;
+      const color = COLORS[e.event as string] || "";
+      const time = e.ts ? new Date(e.ts as string).toLocaleTimeString() : "";
       const detail = e.iteration ? ` iter=${e.iteration}` : e.reason ? ` reason=${e.reason}` : "";
       console.log(`${color}[${time}] ${e.event}${detail}${RESET}`);
     } catch { /* skip malformed */ }
@@ -266,7 +271,7 @@ async function runWatch() {
         if (s.size > lastSize) {
           const raw = await readFile(tracePath, "utf-8");
           const lines = raw.trim().split("\n");
-          const newLines = [];
+          const newLines: string[] = [];
           let pos = 0;
           for (const line of lines) {
             pos += Buffer.byteLength(line + "\n");
@@ -285,7 +290,7 @@ async function runWatch() {
   process.stdin.resume();
 }
 
-async function runReplay() {
+async function runReplay(): Promise<void> {
   const file = args[1];
   if (!file) {
     console.log("Usage: loophaus replay <trace-file> [--speed 2]");
@@ -295,16 +300,16 @@ async function runReplay() {
   const speed = speedRaw === "instant" ? 999999 : (parseFloat(speedRaw) || 1);
   const speedLabel = speed >= 999999 ? "instant" : `${speed}x`;
 
-  const { readTrace } = await import("../core/event-logger.mjs");
-  const { replayTrace, analyzeTrace } = await import("../core/trace-analyzer.mjs");
+  const { readTrace } = await import("../core/event-logger.js");
+  const { replayTrace, analyzeTrace } = await import("../core/trace-analyzer.js");
 
-  let events;
+  let events: LoopEvent[];
   if (file === ".loophaus/trace.jsonl" || file === "trace.jsonl") {
-    events = await readTrace();
+    events = await readTrace() as LoopEvent[];
   } else {
     const { readFile } = await import("node:fs/promises");
     const raw = await readFile(file, "utf-8");
-    events = raw.trim().split("\n").map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    events = raw.trim().split("\n").map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean) as LoopEvent[];
   }
 
   if (events.length === 0) { console.log("No events found."); return; }
@@ -314,17 +319,17 @@ async function runReplay() {
 
   console.log(`Replaying ${events.length} events (${speedLabel})\n`);
 
-  const COLORS = { iteration: "\x1b[36m", stop: "\x1b[31m", continue: "\x1b[32m", error: "\x1b[31m", cost: "\x1b[33m", state_change: "\x1b[35m", verify_script: "\x1b[32m", verify_failed: "\x1b[31m", story_complete: "\x1b[32m", loop_start: "\x1b[36m", loop_end: "\x1b[36m" };
+  const COLORS: Record<string, string> = { iteration: "\x1b[36m", stop: "\x1b[31m", continue: "\x1b[32m", error: "\x1b[31m", cost: "\x1b[33m", state_change: "\x1b[35m", verify_script: "\x1b[32m", verify_failed: "\x1b[31m", story_complete: "\x1b[32m", loop_start: "\x1b[36m", loop_end: "\x1b[36m" };
   const RESET = "\x1b[0m";
 
   let prevMs = 0;
   for (const e of replayed) {
     const delay = speed >= 999999 ? 0 : e.relativeMs - prevMs;
-    if (delay > 0) await new Promise(r => setTimeout(r, delay));
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay));
     prevMs = e.relativeMs;
 
-    const color = COLORS[e.event] || "";
-    const time = e.ts ? new Date(e.ts).toLocaleTimeString() : "";
+    const color = COLORS[e.event as string] || "";
+    const time = e.ts ? new Date(e.ts as string).toLocaleTimeString() : "";
     const detail = e.iteration ? ` iter=${e.iteration}` : e.reason ? ` reason=${e.reason}` : "";
     console.log(`${color}[${time}] ${e.event}${detail}${RESET}`);
   }
@@ -336,7 +341,7 @@ async function runReplay() {
   if (analysis.lastStopReason) console.log(`Stop reason: ${analysis.lastStopReason}`);
 }
 
-async function runCompare() {
+async function runCompare(): Promise<void> {
   const file1 = args[1];
   const file2 = args[2];
   if (!file1 || !file2) {
@@ -345,11 +350,11 @@ async function runCompare() {
   }
 
   const { readFile } = await import("node:fs/promises");
-  const { compareTraces } = await import("../core/trace-analyzer.mjs");
+  const { compareTraces } = await import("../core/trace-analyzer.js");
 
-  function loadTrace(file) {
-    return readFile(file, "utf-8").then(raw =>
-      raw.trim().split("\n").map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean)
+  function loadTrace(traceFile: string): Promise<LoopEvent[]> {
+    return readFile(traceFile, "utf-8").then((raw) =>
+      raw.trim().split("\n").map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean) as LoopEvent[]
     );
   }
 
@@ -357,11 +362,11 @@ async function runCompare() {
   const result = compareTraces(t1, t2);
 
   console.log("Loop Comparison");
-  console.log("═══════════════\n");
+  console.log("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n");
 
-  const fmt = (label, v1, v2, diff, unit = "") => {
-    const arrow = diff > 0 ? `+${diff}` : `${diff}`;
-    const color = diff > 0 ? "\x1b[31m" : diff < 0 ? "\x1b[32m" : "";
+  const fmt = (label: string, v1: string | number, v2: string | number, diff: string | number, unit = ""): void => {
+    const arrow = Number(diff) > 0 ? `+${diff}` : `${diff}`;
+    const color = Number(diff) > 0 ? "\x1b[31m" : Number(diff) < 0 ? "\x1b[32m" : "";
     const reset = "\x1b[0m";
     console.log(`  ${label.padEnd(20)} ${String(v1).padStart(8)}${unit}  vs  ${String(v2).padStart(8)}${unit}  ${color}(${arrow}${unit})${reset}`);
   };
@@ -372,13 +377,13 @@ async function runCompare() {
   if (result.trace1.totalCost || result.trace2.totalCost) {
     fmt("Cost", result.trace1.totalCost.toFixed(4), result.trace2.totalCost.toFixed(4), result.diff.totalCost.toFixed(4), "$");
   }
-  fmt("Errors", result.trace1.errors, result.trace2.errors, result.diff.errors);
+  fmt("Errors", result.trace1.errors, result.trace2.errors, result.trace2.errors - result.trace1.errors);
   console.log("");
 }
 
-async function runWorktree() {
+async function runWorktree(): Promise<void> {
   const sub = args[1];
-  const { createWorktree, removeWorktree, listWorktrees } = await import("../core/worktree.mjs");
+  const { createWorktree, removeWorktree, listWorktrees } = await import("../core/worktree.js");
 
   switch (sub) {
     case "create": {
@@ -411,34 +416,34 @@ async function runWorktree() {
   }
 }
 
-async function runSessions() {
-  const { listSessions } = await import("../core/session.mjs");
+async function runSessions(): Promise<void> {
+  const { listSessions } = await import("../core/session.js");
   const sessions = await listSessions();
   if (sessions.length === 0) { console.log("No saved sessions."); return; }
   console.log("Sessions");
   console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
   for (const s of sessions) {
     const age = Math.round((Date.now() - new Date(s.savedAt).getTime()) / 60000);
-    console.log(`  ${s.sessionId}  iter=${s.currentIteration || 0}  ${age}m ago`);
+    console.log(`  ${(s as Record<string, unknown>).sessionId}  iter=${(s as Record<string, unknown>).currentIteration || 0}  ${age}m ago`);
   }
 }
 
-async function runResume() {
+async function runResume(): Promise<void> {
   const id = args[1];
   if (!id) { console.log("Usage: loophaus resume <session-id>"); return; }
-  const { resumeSession } = await import("../core/session.mjs");
+  const { resumeSession } = await import("../core/session.js");
   const state = await resumeSession(id);
   if (!state) { console.log(`Session not found: ${id}`); return; }
   console.log(`Resumed session ${id} at iteration ${state.currentIteration}`);
   console.log(`Loop is now active. The stop hook will continue from here.`);
 }
 
-async function runParallelCmd() {
+async function runParallelCmd(): Promise<void> {
   const prdPath = args[1] || "prd.json";
   const count = parseInt(getFlag("--count") || "2", 10);
   const base = getFlag("--base") || "HEAD";
 
-  const { runParallel } = await import("../core/parallel-runner.mjs");
+  const { runParallel } = await import("../core/parallel-runner.js");
   const result = await runParallel({ prdPath, count, baseBranch: base });
   console.log(result.message);
   if (result.worktrees) {
@@ -449,18 +454,18 @@ async function runParallelCmd() {
   }
 }
 
-async function runQuality() {
+async function runQuality(): Promise<void> {
   const storyId = getFlag("--story");
   const cwd = process.cwd();
 
   if (storyId) {
-    const { evaluateStory } = await import("../core/quality-scorer.mjs");
-    const { read } = await import("../store/state-store.mjs");
+    const { evaluateStory } = await import("../core/quality-scorer.js");
+    const { read } = await import("../store/state-store.js");
     const state = await read(cwd);
-    const config = state.qualityConfig || {};
+    const config: Record<string, unknown> = (state.qualityConfig as Record<string, unknown>) || {};
 
     if (!config.typecheckCommand) {
-      try { await access(join(cwd, "tsconfig.json")); config.typecheckCommand = "npx tsc --noEmit"; } catch {}
+      try { await access(join(cwd, "tsconfig.json")); config.typecheckCommand = "npx tsc --noEmit"; } catch { /* no tsconfig */ }
     }
 
     const result = await evaluateStory(storyId, cwd, config);
@@ -468,23 +473,24 @@ async function runQuality() {
     console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
     console.log(`Score: ${result.score}/100 (${result.grade})`);
     for (const [k, v] of Object.entries(result.breakdown)) {
-      const bar = "\u2588".repeat(v) + "\u2591".repeat(10 - v);
-      console.log(`  ${k.padEnd(10)} ${bar} ${v}/10`);
+      const numVal = v as number;
+      const bar = "\u2588".repeat(numVal) + "\u2591".repeat(10 - numVal);
+      console.log(`  ${k.padEnd(10)} ${bar} ${numVal}/10`);
     }
   } else {
-    const { readResults } = await import("../core/quality-scorer.mjs");
+    const { readResults } = await import("../core/quality-scorer.js");
     const results = await readResults(cwd);
     if (results.length === 0) { console.log("No quality results yet. Run /loop-plan first."); return; }
 
     console.log("Quality Results");
     console.log("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550");
-    const byStory = {};
+    const byStory: Record<string, typeof results> = {};
     for (const r of results) {
       if (!byStory[r.storyId]) byStory[r.storyId] = [];
       byStory[r.storyId].push(r);
     }
     for (const [sid, attempts] of Object.entries(byStory)) {
-      const best = attempts.reduce((a, b) => a.score > b.score ? a : b);
+      const best = attempts.reduce((a, b) => (a.score > b.score ? a : b));
       const icon = best.status === "keep" ? "\u2713" : best.status === "discard" ? "\u2717" : "~";
       console.log(`  ${icon} ${sid}  score: ${best.score}  (${attempts.length} attempts)`);
     }
@@ -516,6 +522,6 @@ try {
       }
   }
 } catch (err) {
-  console.error(`\u2718 ${err.message}`);
+  console.error(`\u2718 ${(err as Error).message}`);
   process.exit(1);
 }

@@ -9,7 +9,7 @@ import {
   getSkillsDir,
   getAgentsHome,
   getAgentsSkillsDir,
-} from "../../lib/paths.mjs";
+} from "../../lib/paths.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(__filename), "../..");

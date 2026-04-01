@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Backward-compat wrapper — delegates to bin/loophaus.mjs
+// Backward-compat wrapper — delegates to bin/loophaus.ts
 
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
-const loophausCli = resolve(dirname(__filename), "loophaus.mjs");
+const loophausCli: string = resolve(dirname(__filename), "loophaus.js");
 
 await import(loophausCli);

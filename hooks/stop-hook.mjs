@@ -2,7 +2,7 @@
 
 import { evaluateStopHook } from "../core/engine.js";
 import { getLastAssistantText, hasPendingStories } from "../core/io-helpers.js";
-import { read as readState, write as writeState } from "../store/state-store.mjs";
+import { read as readState, write as writeState } from "../store/state-store.js";
 import { logEvents } from "../core/event-logger.js";
 import { join } from "node:path";
 

@@ -6,7 +6,7 @@ import {
   processStopHook,
   extractPromise,
   getLastAssistantText,
-} from "../lib/stop-hook-core.mjs";
+} from "../lib/stop-hook-core.js";
 
 let tempDir;
 let savedState;

@@ -18,7 +18,7 @@ const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, "..");
-const cliScript = join(projectRoot, "bin", "loophaus.mjs");
+const cliScript = join(projectRoot, "dist", "bin", "loophaus.js");
 
 let tempDir;
 
@@ -75,7 +75,7 @@ describe("loophaus CLI", () => {
     ).toBe(true);
     expect(
       await fileExists(
-        join(codexHome, "plugins", "loophaus", "store", "state-store.mjs"),
+        join(codexHome, "plugins", "loophaus", "store", "state-store.js"),
       ),
     ).toBe(true);
     expect(await fileExists(join(codexHome, "hooks.json"))).toBe(true);
@@ -85,7 +85,7 @@ describe("loophaus CLI", () => {
     expect(hooksJson.hooks.Stop).toHaveLength(1);
     expect(hooksJson.hooks.Stop[0].hooks[0].command).toContain("loophaus");
     // Skills installed to ~/.agents/skills/ (new standard path)
-    const { getAgentsSkillsDir } = await import("../lib/paths.mjs");
+    const { getAgentsSkillsDir } = await import("../lib/paths.js");
     const agentsSkills = getAgentsSkillsDir();
     expect(
       await fileExists(join(agentsSkills, "loop", "SKILL.md")),
