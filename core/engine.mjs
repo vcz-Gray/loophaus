@@ -27,6 +27,19 @@ export function evaluateStopHook(input, state) {
     };
   }
 
+  if (input.policy_result && input.policy_result.shouldStop) {
+    nextState.active = false;
+    events.push({ event: "stop", reason: "policy_violation", violations: input.policy_result.violations });
+    const reasons = input.policy_result.violations.map(v => `${v.type}: ${v.current}/${v.limit}`).join(", ");
+    return {
+      decision: "allow",
+      nextState,
+      events,
+      output: null,
+      message: `Loop: policy violation (${reasons}).`,
+    };
+  }
+
   if (nextState.completionPromise && input.last_assistant_text) {
     if (extractPromise(input.last_assistant_text, nextState.completionPromise)) {
       nextState.active = false;
@@ -55,6 +68,16 @@ export function evaluateStopHook(input, state) {
       };
     }
     events.push({ event: "verify_failed", script: nextState.verifyScript, output: input.verify_result.output || "" });
+  }
+
+  if (input.test_results && input.test_results.length > 0) {
+    const allPassed = input.test_results.every(r => r.passed);
+    if (allPassed) {
+      events.push({ event: "test_result", status: "all_passed", results: input.test_results });
+    } else {
+      const failed = input.test_results.filter(r => !r.passed);
+      events.push({ event: "test_result", status: "some_failed", failed: failed.map(f => f.storyId) });
+    }
   }
 
   if (input.stop_hook_active === true) {

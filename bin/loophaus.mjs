@@ -46,6 +46,8 @@ Usage:
   npx @graypark/loophaus loops
   npx @graypark/loophaus worktree <create|remove|list>
   npx @graypark/loophaus parallel <prd.json> [--count N] [--base branch]
+  npx @graypark/loophaus sessions
+  npx @graypark/loophaus resume <session-id>
   npx @graypark/loophaus --version
 
 Hosts:
@@ -408,6 +410,28 @@ async function runWorktree() {
   }
 }
 
+async function runSessions() {
+  const { listSessions } = await import("../core/session.mjs");
+  const sessions = await listSessions();
+  if (sessions.length === 0) { console.log("No saved sessions."); return; }
+  console.log("Sessions");
+  console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+  for (const s of sessions) {
+    const age = Math.round((Date.now() - new Date(s.savedAt).getTime()) / 60000);
+    console.log(`  ${s.sessionId}  iter=${s.currentIteration || 0}  ${age}m ago`);
+  }
+}
+
+async function runResume() {
+  const id = args[1];
+  if (!id) { console.log("Usage: loophaus resume <session-id>"); return; }
+  const { resumeSession } = await import("../core/session.mjs");
+  const state = await resumeSession(id);
+  if (!state) { console.log(`Session not found: ${id}`); return; }
+  console.log(`Resumed session ${id} at iteration ${state.currentIteration}`);
+  console.log(`Loop is now active. The stop hook will continue from here.`);
+}
+
 async function runParallelCmd() {
   const prdPath = args[1] || "prd.json";
   const count = parseInt(getFlag("--count") || "2", 10);
@@ -436,6 +460,8 @@ try {
     case "compare": await runCompare(); break;
     case "worktree": await runWorktree(); break;
     case "parallel": await runParallelCmd(); break;
+    case "sessions": await runSessions(); break;
+    case "resume": await runResume(); break;
     default:
       if (command.startsWith("-")) {
         await runInstall();
