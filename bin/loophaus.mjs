@@ -44,6 +44,8 @@ Usage:
   npx @graypark/loophaus replay <trace-file> [--speed 2]
   npx @graypark/loophaus compare <trace1> <trace2>
   npx @graypark/loophaus loops
+  npx @graypark/loophaus worktree <create|remove|list>
+  npx @graypark/loophaus parallel <prd.json> [--count N] [--base branch]
   npx @graypark/loophaus --version
 
 Hosts:
@@ -371,6 +373,57 @@ async function runCompare() {
   console.log("");
 }
 
+async function runWorktree() {
+  const sub = args[1];
+  const { createWorktree, removeWorktree, listWorktrees } = await import("../core/worktree.mjs");
+
+  switch (sub) {
+    case "create": {
+      const name = args[2];
+      const base = args[3] || "HEAD";
+      if (!name) { console.log("Usage: loophaus worktree create <name> [base-branch]"); return; }
+      const wt = await createWorktree(name, base);
+      console.log(`Created worktree: ${wt.name} at ${wt.path} (branch: ${wt.branch})`);
+      break;
+    }
+    case "remove": {
+      const name = args[2];
+      if (!name) { console.log("Usage: loophaus worktree remove <name>"); return; }
+      await removeWorktree(name);
+      console.log(`Removed worktree: ${name}`);
+      break;
+    }
+    case "list": {
+      const wts = await listWorktrees();
+      if (wts.length === 0) { console.log("No loophaus worktrees."); return; }
+      console.log("Worktrees");
+      console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+      for (const wt of wts) {
+        console.log(`  ${wt.name}  ${wt.branch}  ${wt.path}`);
+      }
+      break;
+    }
+    default:
+      console.log("Usage: loophaus worktree <create|remove|list>");
+  }
+}
+
+async function runParallelCmd() {
+  const prdPath = args[1] || "prd.json";
+  const count = parseInt(getFlag("--count") || "2", 10);
+  const base = getFlag("--base") || "HEAD";
+
+  const { runParallel } = await import("../core/parallel-runner.mjs");
+  const result = await runParallel({ prdPath, count, baseBranch: base });
+  console.log(result.message);
+  if (result.worktrees) {
+    console.log("\nWorktrees:");
+    for (const wt of result.worktrees) {
+      console.log(`  ${wt.name}  branch:${wt.branch}  stories:[${wt.stories.join(",")}]`);
+    }
+  }
+}
+
 try {
   switch (command) {
     case "install": await runInstall(); break;
@@ -381,6 +434,8 @@ try {
     case "watch": await runWatch(); break;
     case "replay": await runReplay(); break;
     case "compare": await runCompare(); break;
+    case "worktree": await runWorktree(); break;
+    case "parallel": await runParallelCmd(); break;
     default:
       if (command.startsWith("-")) {
         await runInstall();

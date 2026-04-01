@@ -50,7 +50,9 @@ Ask **concise questions** for missing items. Max 3-5 per round, one round only.
 | Cross-file understanding needed | -1    |
 | Multiple services               | +3    |
 
-Score >= 3: Use parallel Agent tool subagents in the prompt.
+Score >= 3: **Auto-parallel mode.** Group stories by `group` field, create isolated worktrees per group using Agent tool with `isolation: "worktree"`, launch ALL groups simultaneously in a single message. After all agents complete, merge branches back with squash strategy.
+
+Score < 3: Sequential mode. Single loop, stories in order.
 
 ### max-iterations
 
@@ -80,6 +82,8 @@ ralph-skills compatible format:
       "acceptanceCriteria": ["Criterion 1", "Typecheck passes"],
       "priority": 1,
       "passes": false,
+      "group": "backend",
+      "testCommand": "npm test -- US-001",
       "notes": ""
     }
   ]

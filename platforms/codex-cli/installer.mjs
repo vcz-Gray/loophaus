@@ -86,22 +86,37 @@ description: "Stop active loop"
   "loop-plan": {
     content: `---
 name: loop-plan
-description: "Plan and start loop via interactive interview"
+description: "Plan and start loop via interactive interview — auto-parallelizes across worktrees"
 argument-hint: "TASK_DESCRIPTION"
 ---
 
-# /loop-plan — Interactive Planning & Loop
+# /loop-plan — Plan, Parallelize, Execute, Merge
 
 ## Phase 1: Discovery Interview
-Ask 3-5 focused questions about the task to understand scope, acceptance criteria, constraints.
+Ask 3-5 focused questions about scope, success criteria, verification commands, parallelism potential.
 
 ## Phase 2: PRD Generation
-Generate \`prd.json\` with right-sized user stories.
+Generate \`prd.json\` with user stories. Each story has: id, title, description, acceptanceCriteria, priority, passes, group (for parallel distribution), testCommand.
 
-## Phase 3: Loop Activation
-Create \`.loophaus/state.json\` and start working on US-001 immediately.
+## Phase 3: Parallelism Assessment
+Score the task: stories span 3+ dirs (+2), independent (+2), multiple services (+3), 6+ stories (+1), need full context (-2), strict ordering (-3).
+Score >= 3: parallel mode (worktrees by group). Score < 3: sequential mode.
 
-Use \`<promise>TASK COMPLETE</promise>\` ONLY when ALL stories pass.
+## Phase 4A: Parallel Execution (score >= 3)
+1. Group stories by \`group\` field
+2. For each group, create an isolated worktree and assign stories
+3. Run all groups simultaneously
+4. When all complete, merge branches back (squash strategy)
+5. Run full verification on merged result
+
+## Phase 4B: Sequential Execution (score < 3)
+Create \`.loophaus/state.json\` and work through stories one at a time.
+
+## Rules
+- Present PRD for user approval before execution
+- Show parallelism score and recommendation
+- If merge conflict: STOP and report
+- Use \`<promise>TASK COMPLETE</promise>\` ONLY when ALL stories pass
 `,
   },
   "loop-pulse": {
