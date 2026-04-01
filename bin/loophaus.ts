@@ -15,7 +15,70 @@ const command: string = args[0] || "install";
 const dryRun: boolean = args.includes("--dry-run");
 const force: boolean = args.includes("--force");
 const local: boolean = args.includes("--local");
+const verbose: boolean = args.includes("--verbose");
 const showHelp: boolean = args.includes("--help") || args.includes("-h");
+
+const KNOWN_FLAGS = new Set([
+  "--help", "-h", "--version", "--dry-run", "--force", "--local", "--verbose",
+  "--host", "--claude", "--kiro", "--name", "--speed", "--count", "--base", "--story",
+]);
+
+const VALID_COMMANDS = [
+  "install", "uninstall", "status", "stats", "loops", "watch",
+  "replay", "compare", "worktree", "parallel", "quality",
+  "sessions", "resume", "help",
+];
+
+function validateFlags(): void {
+  for (const arg of args) {
+    if (arg.startsWith("--") && !KNOWN_FLAGS.has(arg)) {
+      console.error(`Unknown flag: ${arg}. Run loophaus --help for usage.`);
+      process.exit(1);
+    }
+  }
+}
+
+function suggestCommand(input: string): string | null {
+  let best: string | null = null;
+  let bestScore = Infinity;
+  for (const cmd of VALID_COMMANDS) {
+    const dist = levenshtein(input, cmd);
+    if (dist < bestScore && dist <= 3) {
+      bestScore = dist;
+      best = cmd;
+    }
+  }
+  return best;
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function spinner(label: string): { stop: () => void } {
+  const frames = ["\u280B", "\u2819", "\u2839", "\u2838", "\u283C", "\u2834", "\u2826", "\u2827", "\u2807", "\u280F"];
+  let i = 0;
+  const id = setInterval(() => {
+    process.stderr.write(`\r${frames[i++ % frames.length]} ${label}`);
+  }, 80);
+  return {
+    stop() {
+      clearInterval(id);
+      process.stderr.write(`\r\x1b[K`);
+    },
+  };
+}
 
 function getHost(): string | null {
   if (args.includes("--claude")) return "claude-code";
@@ -32,6 +95,19 @@ function getFlag(flag: string): string | undefined {
   if (idx !== -1 && args[idx + 1] && !args[idx + 1].startsWith("-")) return args[idx + 1];
   return undefined;
 }
+
+function getNumericFlag(flag: string, defaultVal: number): number {
+  const raw = getFlag(flag);
+  if (raw === undefined) return defaultVal;
+  const num = parseFloat(raw);
+  if (isNaN(num)) {
+    console.error(`Flag ${flag} requires a numeric value, got: "${raw}"`);
+    process.exit(1);
+  }
+  return num;
+}
+
+validateFlags();
 
 if (showHelp || command === "help") {
   console.log(`loophaus — Control plane for coding agents
@@ -67,6 +143,7 @@ Options:
   --local        Install to project-local .codex/ (Codex only)
   --force        Overwrite existing installation
   --dry-run      Preview changes without modifying files
+  --verbose      Show full stack trace on error
 `);
   process.exit(0);
 }
@@ -105,17 +182,22 @@ async function runInstall(): Promise<void> {
   }
 
   for (const t of targets) {
-    if (t === "claude-code") {
-      const { install } = await import("../platforms/claude-code/installer.mjs");
-      await install({ dryRun, force });
-    } else if (t === "codex-cli") {
-      const { install } = await import("../platforms/codex-cli/installer.mjs");
-      await install({ dryRun, force, local });
-    } else if (t === "kiro-cli") {
-      const { install } = await import("../platforms/kiro-cli/installer.mjs");
-      await install({ dryRun, force });
-    } else {
-      console.log(`Unknown host: ${t}`);
+    const s = dryRun ? null : spinner(`Installing to ${t}...`);
+    try {
+      if (t === "claude-code") {
+        const { install } = await import("../platforms/claude-code/installer.mjs");
+        await install({ dryRun, force });
+      } else if (t === "codex-cli") {
+        const { install } = await import("../platforms/codex-cli/installer.mjs");
+        await install({ dryRun, force, local });
+      } else if (t === "kiro-cli") {
+        const { install } = await import("../platforms/kiro-cli/installer.mjs");
+        await install({ dryRun, force });
+      } else {
+        console.log(`Unknown host: ${t}`);
+      }
+    } finally {
+      s?.stop();
     }
   }
 }
@@ -296,8 +378,7 @@ async function runReplay(): Promise<void> {
     console.log("Usage: loophaus replay <trace-file> [--speed 2]");
     process.exit(1);
   }
-  const speedRaw = getFlag("--speed") || "1";
-  const speed = speedRaw === "instant" ? 999999 : (parseFloat(speedRaw) || 1);
+  const speed = getFlag("--speed") === "instant" ? 999999 : getNumericFlag("--speed", 1);
   const speedLabel = speed >= 999999 ? "instant" : `${speed}x`;
 
   const { readTrace } = await import("../core/event-logger.js");
@@ -440,7 +521,7 @@ async function runResume(): Promise<void> {
 
 async function runParallelCmd(): Promise<void> {
   const prdPath = args[1] || "prd.json";
-  const count = parseInt(getFlag("--count") || "2", 10);
+  const count = getNumericFlag("--count", 2);
   const base = getFlag("--base") || "HEAD";
 
   const { runParallel } = await import("../core/parallel-runner.js");
@@ -516,12 +597,25 @@ try {
       if (command.startsWith("-")) {
         await runInstall();
       } else {
+        const suggestion = suggestCommand(command);
         console.log(`Unknown command: ${command}`);
-        console.log("Run: npx @graypark/loophaus --help");
+        if (suggestion) console.log(`Did you mean: loophaus ${suggestion}?`);
+        console.log("Run: loophaus --help for available commands.");
         process.exit(1);
       }
   }
 } catch (err) {
-  console.error(`\u2718 ${(err as Error).message}`);
+  const error = err as Error;
+  console.error(`\u2718 ${error.message}`);
+  if (verbose && error.stack) {
+    console.error(`\n${error.stack}`);
+  }
+  if (error.message.includes("Not in a git repository")) {
+    console.error("  Hint: Run this command from a git project root.");
+  } else if (error.message.includes("EACCES") || error.message.includes("permission")) {
+    console.error("  Hint: Check file permissions, or try with appropriate access.");
+  } else if (error.message.includes("ENOENT")) {
+    console.error("  Hint: A required file was not found. Check your working directory.");
+  }
   process.exit(1);
 }
