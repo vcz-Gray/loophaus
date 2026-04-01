@@ -1,11 +1,24 @@
-// core/refine-loop.mjs
+// core/refine-loop.ts
 // autoresearch keep/discard pattern for code quality improvement
 
-export function shouldKeep(newScore, baselineScore) {
+interface Evaluation {
+  storyId: string;
+  score: number;
+  grade: string;
+  breakdown: Record<string, number>;
+}
+
+interface PreviousAttempt {
+  attempt: number;
+  score: number;
+  status: string;
+}
+
+export function shouldKeep(newScore: number, baselineScore: number): boolean {
   return newScore > baselineScore;
 }
 
-export function generateFeedback(evaluation, previousAttempts = []) {
+export function generateFeedback(evaluation: Evaluation, previousAttempts: PreviousAttempt[] = []): string {
   const { storyId, score, grade, breakdown } = evaluation;
   const failedCriteria = Object.entries(breakdown)
     .filter(([_, v]) => v < 7)
@@ -22,7 +35,7 @@ export function generateFeedback(evaluation, previousAttempts = []) {
   return prompt;
 }
 
-export function identifyRefinementTargets(evaluations, threshold = 80) {
+export function identifyRefinementTargets(evaluations: Evaluation[], threshold: number = 80): Evaluation[] {
   return evaluations
     .filter(e => e.score < threshold)
     .sort((a, b) => a.score - b.score);

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { scoreStory, readResults, logResult } from "../core/quality-scorer.mjs";
+import { scoreStory, readResults, logResult } from "../core/quality-scorer.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

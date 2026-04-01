@@ -1,25 +1,61 @@
-// core/parallel-runner.mjs
+// core/parallel-runner.ts
 // Parallel loop execution across worktrees
 
-import { fork } from "node:child_process";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createWorktree, removeWorktree, listWorktrees } from "./worktree.mjs";
+import { createWorktree, removeWorktree, listWorktrees } from "./worktree.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const HOOKS_DIR = resolve(dirname(__filename), "..", "hooks");
 
-export function distributeStories(stories, n) {
+interface Story {
+  id: string;
+  priority?: number;
+  passes?: boolean;
+  [key: string]: unknown;
+}
+
+interface Prd {
+  userStories?: Story[];
+  [key: string]: unknown;
+}
+
+interface WorktreeWithStories {
+  name: string;
+  path: string;
+  branch: string;
+  stories: Story[];
+}
+
+interface ParallelResult {
+  success: boolean;
+  message: string;
+  worktrees?: Array<{
+    name: string;
+    path: string;
+    branch: string;
+    stories: string[];
+  }>;
+  results?: never[];
+}
+
+interface CleanupResult {
+  name: string;
+  removed: boolean;
+  error?: string;
+}
+
+export function distributeStories(stories: Story[], n: number): Story[][] {
   const sorted = [...stories].sort((a, b) => (a.priority || 999) - (b.priority || 999));
-  const buckets = Array.from({ length: n }, () => []);
+  const buckets: Story[][] = Array.from({ length: n }, () => []);
   sorted.forEach((story, i) => buckets[i % n].push(story));
   return buckets;
 }
 
-export async function runParallel({ prdPath, count = 2, baseBranch = "HEAD", cwd }) {
+export async function runParallel({ prdPath, count = 2, baseBranch = "HEAD", cwd }: { prdPath: string; count?: number; baseBranch?: string; cwd?: string }): Promise<ParallelResult> {
   const raw = await readFile(prdPath, "utf-8");
-  const prd = JSON.parse(raw);
+  const prd = JSON.parse(raw) as Prd;
   const pending = (prd.userStories || []).filter(s => !s.passes);
 
   if (pending.length === 0) {
@@ -29,7 +65,7 @@ export async function runParallel({ prdPath, count = 2, baseBranch = "HEAD", cwd
   const effectiveCount = Math.min(count, pending.length);
   const buckets = distributeStories(pending, effectiveCount);
 
-  const worktrees = [];
+  const worktrees: WorktreeWithStories[] = [];
   for (let i = 0; i < effectiveCount; i++) {
     const name = `parallel-${i}`;
     try {
@@ -39,7 +75,7 @@ export async function runParallel({ prdPath, count = 2, baseBranch = "HEAD", cwd
       for (const prev of worktrees) {
         try { await removeWorktree(prev.name); } catch {}
       }
-      throw new Error(`Failed to create worktree ${name}: ${err.message}`);
+      throw new Error(`Failed to create worktree ${name}: ${(err as Error).message}`);
     }
   }
 
@@ -77,16 +113,16 @@ export async function runParallel({ prdPath, count = 2, baseBranch = "HEAD", cwd
   };
 }
 
-export async function cleanupParallel() {
+export async function cleanupParallel(): Promise<CleanupResult[]> {
   const worktrees = await listWorktrees();
-  const results = [];
+  const results: CleanupResult[] = [];
   for (const wt of worktrees) {
     if (wt.name.startsWith("parallel-")) {
       try {
         await removeWorktree(wt.name);
         results.push({ name: wt.name, removed: true });
       } catch (err) {
-        results.push({ name: wt.name, removed: false, error: err.message });
+        results.push({ name: wt.name, removed: false, error: (err as Error).message });
       }
     }
   }

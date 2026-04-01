@@ -1,25 +1,47 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const DEFAULT_POLICY = {
+import type { PolicyResult, PolicyViolation } from "./types.js";
+
+interface PolicyCondition {
+  type: string;
+  value: number;
+}
+
+interface Policy {
+  id: string;
+  conditions: PolicyCondition[];
+}
+
+interface PolicyContext {
+  totalCost?: number;
+  errorCount?: number;
+}
+
+interface PolicyState {
+  currentIteration: number;
+  startedAt?: string;
+}
+
+const DEFAULT_POLICY: Policy = {
   id: "default",
   conditions: [
     { type: "max_iterations", value: 20 },
   ],
 };
 
-export async function loadPolicy(cwd) {
+export async function loadPolicy(cwd?: string): Promise<Policy> {
   const policyPath = join(cwd || process.cwd(), ".loophaus", "policy.json");
   try {
     const raw = await readFile(policyPath, "utf-8");
-    return JSON.parse(raw);
+    return JSON.parse(raw) as Policy;
   } catch {
     return DEFAULT_POLICY;
   }
 }
 
-export function evaluatePolicy(policy, state, context = {}) {
-  const violations = [];
+export function evaluatePolicy(policy: Policy, state: PolicyState, context: PolicyContext = {}): PolicyResult {
+  const violations: PolicyViolation[] = [];
 
   for (const condition of policy.conditions || []) {
     switch (condition.type) {

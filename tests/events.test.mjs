@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EventType, filterByType, filterByTimeRange, summarizeEvents } from "../core/events.mjs";
+import { EventType, filterByType, filterByTimeRange, summarizeEvents } from "../core/events.js";
 
 describe("EventType", () => {
   it("has expected types", () => {

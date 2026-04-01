@@ -1,4 +1,6 @@
 node_modules/
+dist/
+.loophaus/
 .codex/ralph-loop.state.json
 *.log
 .DS_Store

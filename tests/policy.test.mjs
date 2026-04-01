@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluatePolicy, DEFAULT_POLICY } from "../core/policy.mjs";
+import { evaluatePolicy, DEFAULT_POLICY } from "../core/policy.js";
 
 describe("evaluatePolicy", () => {
   it("passes with default policy under limit", () => {

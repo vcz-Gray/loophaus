@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shouldKeep, generateFeedback, identifyRefinementTargets } from "../core/refine-loop.mjs";
+import { shouldKeep, generateFeedback, identifyRefinementTargets } from "../core/refine-loop.js";
 
 describe("shouldKeep", () => {
   it("keeps when improved", () => {

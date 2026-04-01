@@ -1,4 +1,4 @@
-// core/quality-scorer.mjs
+// core/quality-scorer.ts
 // Quality scoring for story implementations (autoresearch pattern: val_bpb -> quality score)
 
 import { execFile } from "node:child_process";
@@ -8,7 +8,12 @@ import { join } from "node:path";
 
 const execFileAsync = promisify(execFile);
 
-const CRITERIA = {
+interface CriterionConfig {
+  weight: number;
+  max: number;
+}
+
+const CRITERIA: Record<string, CriterionConfig> = {
   tests:     { weight: 3, max: 10 },
   typecheck: { weight: 2, max: 10 },
   lint:      { weight: 1, max: 10 },
@@ -17,14 +22,23 @@ const CRITERIA = {
   custom:    { weight: 1, max: 10 },
 };
 
-export function scoreStory(results) {
+interface ScoreResult {
+  score: number;
+  grade: string;
+  breakdown: Record<string, number>;
+}
+
+type ResultValue = number | { score?: number } | undefined | null;
+
+export function scoreStory(results: Record<string, ResultValue>): ScoreResult {
   let totalWeight = 0;
   let weightedSum = 0;
-  const breakdown = {};
+  const breakdown: Record<string, number> = {};
 
   for (const [key, config] of Object.entries(CRITERIA)) {
     if (results[key] === undefined || results[key] === null) continue;
-    const value = typeof results[key] === "number" ? results[key] : (results[key].score ?? 0);
+    const raw = results[key]!;
+    const value = typeof raw === "number" ? raw : ((raw as { score?: number }).score ?? 0);
     const clamped = Math.max(0, Math.min(config.max, value));
     breakdown[key] = clamped;
     weightedSum += clamped * config.weight;
@@ -37,8 +51,20 @@ export function scoreStory(results) {
   return { score, grade, breakdown };
 }
 
-export async function evaluateStory(storyId, cwd, config = {}) {
-  const results = {};
+interface EvaluateConfig {
+  testCommand?: string;
+  typecheckCommand?: string;
+  lintCommand?: string;
+  verifyScript?: string;
+}
+
+interface EvaluationResult extends ScoreResult {
+  storyId: string;
+  results: Record<string, number>;
+}
+
+export async function evaluateStory(storyId: string, cwd: string, config: EvaluateConfig = {}): Promise<EvaluationResult> {
+  const results: Record<string, number> = {};
 
   if (config.testCommand) {
     try {
@@ -54,7 +80,7 @@ export async function evaluateStory(storyId, cwd, config = {}) {
       await execFileAsync("sh", ["-c", config.typecheckCommand], { cwd, timeout: 60_000 });
       results.typecheck = 10;
     } catch (err) {
-      const errorCount = (err.stdout || "").split("\n").filter(l => l.includes("error")).length;
+      const errorCount = ((err as { stdout?: string }).stdout || "").split("\n").filter(l => l.includes("error")).length;
       results.typecheck = Math.max(0, 10 - errorCount);
     }
   }
@@ -64,7 +90,7 @@ export async function evaluateStory(storyId, cwd, config = {}) {
       await execFileAsync("sh", ["-c", config.lintCommand], { cwd, timeout: 60_000 });
       results.lint = 10;
     } catch (err) {
-      const warnings = (err.stdout || "").split("\n").filter(l => l.includes("warning") || l.includes("error")).length;
+      const warnings = ((err as { stdout?: string }).stdout || "").split("\n").filter(l => l.includes("warning") || l.includes("error")).length;
       results.lint = Math.max(0, 10 - warnings);
     }
   }
@@ -94,10 +120,10 @@ export async function evaluateStory(storyId, cwd, config = {}) {
   const customPath = join(cwd, ".loophaus", "quality.mjs");
   try {
     await stat(customPath);
-    const mod = await import(customPath);
+    const mod = await import(customPath) as { evaluate?: (storyId: string, cwd: string) => Promise<number | { score?: number }> };
     if (typeof mod.evaluate === "function") {
       const customResult = await mod.evaluate(storyId, cwd);
-      results.custom = typeof customResult === "number" ? customResult : (customResult?.score ?? 0);
+      results.custom = typeof customResult === "number" ? customResult : ((customResult as { score?: number })?.score ?? 0);
     }
   } catch {
     // No custom evaluator
@@ -106,7 +132,16 @@ export async function evaluateStory(storyId, cwd, config = {}) {
   return { storyId, results, ...scoreStory(results) };
 }
 
-export async function logResult(entry, cwd) {
+interface LogEntry {
+  storyId: string;
+  attempt: number;
+  score: number;
+  status: string;
+  description: string;
+  commit?: string;
+}
+
+export async function logResult(entry: LogEntry, cwd?: string): Promise<void> {
   const { appendFile, mkdir } = await import("node:fs/promises");
   const tsvPath = join(cwd || process.cwd(), ".loophaus", "results.tsv");
   await mkdir(join(cwd || process.cwd(), ".loophaus"), { recursive: true });
@@ -121,7 +156,16 @@ export async function logResult(entry, cwd) {
   await appendFile(tsvPath, line, "utf-8");
 }
 
-export async function readResults(cwd) {
+interface ResultEntry {
+  storyId: string;
+  attempt: number;
+  score: number;
+  status: string;
+  description: string;
+  commit: string;
+}
+
+export async function readResults(cwd?: string): Promise<ResultEntry[]> {
   const tsvPath = join(cwd || process.cwd(), ".loophaus", "results.tsv");
   try {
     const raw = await readFile(tsvPath, "utf-8");

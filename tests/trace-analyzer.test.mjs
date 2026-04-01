@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { analyzeTrace, compareTraces, replayTrace } from "../core/trace-analyzer.mjs";
+import { analyzeTrace, compareTraces, replayTrace } from "../core/trace-analyzer.js";
 
 describe("analyzeTrace", () => {
   const events = [

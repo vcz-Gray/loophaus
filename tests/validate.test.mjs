@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateState, validateLoopConfig } from "../core/validate.mjs";
+import { validateState, validateLoopConfig } from "../core/validate.js";
 
 describe("validateState", () => {
   it("accepts valid state", () => {

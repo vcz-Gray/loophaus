@@ -36,6 +36,8 @@
     "LICENSE"
   ],
   "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "postinstall": "echo 'Run: npx loophaus --help'"
   },
@@ -52,6 +54,8 @@
     "coding-agents"
   ],
   "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2",
     "vitest": "^4.1.0"
   }
 }

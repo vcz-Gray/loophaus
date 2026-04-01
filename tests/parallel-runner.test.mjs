@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { distributeStories } from "../core/parallel-runner.mjs";
+import { distributeStories } from "../core/parallel-runner.js";
 
 describe("distributeStories", () => {
   it("distributes stories round-robin by priority", () => {

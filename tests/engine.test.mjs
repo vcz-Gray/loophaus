@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluateStopHook, extractPromise } from "../core/engine.mjs";
+import { evaluateStopHook, extractPromise } from "../core/engine.js";
 
 function makeState(overrides = {}) {
   return {

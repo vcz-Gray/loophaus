@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { evaluateStopHook } from "../core/engine.mjs";
-import { getLastAssistantText, hasPendingStories } from "../core/io-helpers.mjs";
+import { evaluateStopHook } from "../core/engine.js";
+import { getLastAssistantText, hasPendingStories } from "../core/io-helpers.js";
 import { read as readState, write as writeState } from "../store/state-store.mjs";
-import { logEvents } from "../core/event-logger.mjs";
+import { logEvents } from "../core/event-logger.js";
 import { join } from "node:path";
 
 async function runStoryTests(cwd) {
@@ -69,7 +69,7 @@ async function main() {
   const testResults = await runStoryTests(cwd);
 
   // Evaluate loop policy
-  const { loadPolicy, evaluatePolicy } = await import("../core/policy.mjs");
+  const { loadPolicy, evaluatePolicy } = await import("../core/policy.js");
   const policy = await loadPolicy(cwd);
   const policyResult = evaluatePolicy(policy, state, { totalCost: 0, errorCount: 0 });
 
@@ -89,7 +89,7 @@ async function main() {
 
   // Save session checkpoint (best-effort)
   try {
-    const { saveCheckpoint } = await import("../core/session.mjs");
+    const { saveCheckpoint } = await import("../core/session.js");
     await saveCheckpoint(result.nextState.sessionId || `auto-${Date.now()}`, {
       prompt: result.nextState.prompt,
       completionPromise: result.nextState.completionPromise,

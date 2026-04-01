@@ -1,8 +1,16 @@
 // Pure function: no I/O, no side effects. Returns decision + next state + events.
 
-export function evaluateStopHook(input, state) {
-  const events = [];
-  const nextState = { ...state };
+import type {
+  LoopState,
+  StopHookInput,
+  StopHookResult,
+  StopHookOutput,
+  LoopEvent,
+} from "./types.js";
+
+export function evaluateStopHook(input: StopHookInput, state: LoopState): StopHookResult {
+  const events: LoopEvent[] = [];
+  const nextState: LoopState = { ...state };
 
   if (!nextState.active) {
     return { decision: "allow", nextState, events, output: null };
@@ -103,7 +111,7 @@ export function evaluateStopHook(input, state) {
 
   const reason = [nextState.prompt, "", "---", `Loop iteration ${iterInfo}. Continue working on the task above.`].join("\n");
 
-  const output = { decision: "block", reason };
+  const output: StopHookOutput = { decision: "block", reason };
   if (nextState.completionPromise) {
     output.systemMessage = `Loop iteration ${iterInfo} | To stop: output <promise>${nextState.completionPromise}</promise> (ONLY when TRUE)`;
   } else {
@@ -113,11 +121,11 @@ export function evaluateStopHook(input, state) {
   return { decision: "block", nextState, events, output };
 }
 
-export function extractPromise(text, promisePhrase) {
+export function extractPromise(text: string, promisePhrase: string): boolean {
   const regex = new RegExp(`<promise>\\s*${escapeRegex(promisePhrase)}\\s*</promise>`, "s");
   return regex.test(text);
 }
 
-function escapeRegex(str) {
+function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

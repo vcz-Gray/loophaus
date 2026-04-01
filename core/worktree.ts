@@ -1,18 +1,20 @@
-// core/worktree.mjs
+// core/worktree.ts
 // Git worktree lifecycle management
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdir, rm, access } from "node:fs/promises";
+import { mkdir, access } from "node:fs/promises";
 import { join } from "node:path";
+
+import type { WorktreeInfo } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
-async function fileExists(p) {
+async function fileExists(p: string): Promise<boolean> {
   try { await access(p); return true; } catch { return false; }
 }
 
-export async function getRepoRoot() {
+export async function getRepoRoot(): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync("git", ["rev-parse", "--show-toplevel"]);
     return stdout.trim();
@@ -21,14 +23,14 @@ export async function getRepoRoot() {
   }
 }
 
-function validateWorktreeName(name) {
+function validateWorktreeName(name: string): void {
   if (!name || typeof name !== "string") throw new Error("Worktree name is required");
   if (/[\/\\]/.test(name)) throw new Error(`Worktree name must not contain path separators: ${name}`);
   if (name.includes("..")) throw new Error(`Worktree name must not contain '..': ${name}`);
   if (!/^[a-zA-Z0-9._-]+$/.test(name)) throw new Error(`Worktree name contains invalid characters: ${name}. Use alphanumeric, dot, dash, or underscore.`);
 }
 
-export async function createWorktree(name, baseBranch = "HEAD") {
+export async function createWorktree(name: string, baseBranch: string = "HEAD"): Promise<{ name: string; path: string; branch: string }> {
   validateWorktreeName(name);
   const root = await getRepoRoot();
   if (!root) throw new Error("Not in a git repository");
@@ -47,7 +49,7 @@ export async function createWorktree(name, baseBranch = "HEAD") {
   return { name, path: worktreePath, branch: branchName };
 }
 
-export async function removeWorktree(name) {
+export async function removeWorktree(name: string): Promise<{ name: string; removed: boolean }> {
   validateWorktreeName(name);
   const root = await getRepoRoot();
   if (!root) throw new Error("Not in a git repository");
@@ -68,14 +70,14 @@ export async function removeWorktree(name) {
   return { name, removed: true };
 }
 
-export async function listWorktrees() {
+export async function listWorktrees(): Promise<WorktreeInfo[]> {
   const root = await getRepoRoot();
   if (!root) return [];
 
   try {
     const { stdout } = await execFileAsync("git", ["worktree", "list", "--porcelain"]);
-    const entries = [];
-    let current = {};
+    const entries: Array<{ path?: string; head?: string; branch?: string; bare?: boolean }> = [];
+    let current: { path?: string; head?: string; branch?: string; bare?: boolean } = {};
 
     for (const line of stdout.split("\n")) {
       if (line.startsWith("worktree ")) {
@@ -95,8 +97,8 @@ export async function listWorktrees() {
 
     const loophausDir = join(root, ".loophaus", "worktrees");
     return entries.filter(e => e.path && e.path.startsWith(loophausDir)).map(e => ({
-      name: e.path.split("/").pop(),
-      path: e.path,
+      name: e.path!.split("/").pop()!,
+      path: e.path!,
       branch: e.branch || "",
       head: e.head || "",
     }));

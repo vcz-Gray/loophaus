@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { getTracePath, logEvents, readTrace } from "../core/event-logger.mjs";
+import { getTracePath, logEvents, readTrace } from "../core/event-logger.js";
 
 describe("getTracePath", () => {
   it("returns .loophaus/trace.jsonl under given cwd", () => {

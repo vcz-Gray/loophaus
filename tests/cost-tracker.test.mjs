@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { estimateCost, formatCost, createTracker, MODEL_PRICES } from "../core/cost-tracker.mjs";
+import { estimateCost, formatCost, createTracker, MODEL_PRICES } from "../core/cost-tracker.js";
 
 describe("estimateCost", () => {
   it("calculates claude-sonnet-4 cost", () => {

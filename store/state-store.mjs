@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { join, dirname } from "node:path";
-import { validateState } from "../core/validate.mjs";
+import { validateState } from "../core/validate.js";
 
 const DEFAULT_STATE = {
   active: false,

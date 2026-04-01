@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { getLastAssistantText, hasPendingStories } from "../core/io-helpers.mjs";
+import { getLastAssistantText, hasPendingStories } from "../core/io-helpers.js";
 
 describe("getLastAssistantText", () => {
   it("returns empty string for null path", async () => {

@@ -5,7 +5,7 @@ vi.mock("node:child_process", () => ({
 }));
 
 import { execFile } from "node:child_process";
-import { STRATEGIES, mergeSequential, mergeSquash, mergeCherryPick, merge } from "../core/merge-strategy.mjs";
+import { STRATEGIES, mergeSequential, mergeSquash, mergeCherryPick, merge } from "../core/merge-strategy.js";
 
 function mockExecFile(impl) {
   execFile.mockImplementation((cmd, args, cb) => {

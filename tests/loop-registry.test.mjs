@@ -3,7 +3,7 @@ import { mkdir, writeFile, rm } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { listLoops, getLoop } from "../core/loop-registry.mjs";
+import { listLoops, getLoop } from "../core/loop-registry.js";
 
 let tempDir;
 beforeEach(async () => { tempDir = await mkdtemp(join(tmpdir(), "loophaus-reg-")); });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { distributeStories } from "../core/parallel-runner.mjs";
-import { STRATEGIES, merge } from "../core/merge-strategy.mjs";
-import { createWorktree, removeWorktree } from "../core/worktree.mjs";
+import { distributeStories } from "../core/parallel-runner.js";
+import { STRATEGIES, merge } from "../core/merge-strategy.js";
+import { createWorktree, removeWorktree } from "../core/worktree.js";
 
 describe("distributeStories", () => {
   it("distributes evenly", () => {

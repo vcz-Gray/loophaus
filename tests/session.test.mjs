@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { rm, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { saveCheckpoint, loadCheckpoint, listSessions } from "../core/session.mjs";
+import { saveCheckpoint, loadCheckpoint, listSessions } from "../core/session.js";
 
 let tempDir;
 beforeEach(async () => { tempDir = await mkdtemp(join(tmpdir(), "loophaus-sess-")); });
