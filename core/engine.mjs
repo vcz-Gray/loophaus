@@ -41,6 +41,22 @@ export function evaluateStopHook(input, state) {
     }
   }
 
+  // Check verify script result (pre-computed by caller)
+  if (nextState.verifyScript && input.verify_result) {
+    if (input.verify_result.passed) {
+      nextState.active = false;
+      events.push({ event: "stop", reason: "verify_script", script: nextState.verifyScript });
+      return {
+        decision: "allow",
+        nextState,
+        events,
+        output: null,
+        message: `Loop: verify script passed.`,
+      };
+    }
+    events.push({ event: "verify_failed", script: nextState.verifyScript, output: input.verify_result.output || "" });
+  }
+
   if (input.stop_hook_active === true) {
     if (!input.has_pending_stories) {
       nextState.active = false;

@@ -75,7 +75,7 @@ describe("loophaus CLI", () => {
     ).toBe(true);
     expect(
       await fileExists(
-        join(codexHome, "plugins", "loophaus", "lib", "state.mjs"),
+        join(codexHome, "plugins", "loophaus", "store", "state-store.mjs"),
       ),
     ).toBe(true);
     expect(await fileExists(join(codexHome, "hooks.json"))).toBe(true);

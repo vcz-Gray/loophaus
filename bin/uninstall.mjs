@@ -14,7 +14,7 @@ import {
   getClaudeInstalledPluginsPath,
   getAgentsSkillsDir,
 } from "../lib/paths.mjs";
-import { getStatePath } from "../lib/state.mjs";
+import { getStatePath } from "../store/state-store.mjs";
 
 const RALPH_HOOK_MARKER = "loophaus";
 

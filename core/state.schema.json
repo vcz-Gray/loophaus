@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Loophaus State",
+  "type": "object",
+  "required": ["active", "prompt", "maxIterations", "currentIteration"],
+  "properties": {
+    "active": { "type": "boolean" },
+    "prompt": { "type": "string" },
+    "completionPromise": { "type": "string" },
+    "maxIterations": { "type": "integer", "minimum": 0 },
+    "currentIteration": { "type": "integer", "minimum": 0 },
+    "sessionId": { "type": "string" },
+    "name": { "type": "string", "description": "Loop name for multi-loop support" },
+    "verifyScript": { "type": "string", "description": "Path to verification script" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "totalTokens": { "type": "integer" },
+        "estimatedCost": { "type": "number" }
+      }
+    }
+  }
+}

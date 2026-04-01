@@ -20,7 +20,7 @@ Run this command to initialize the Ralph loop state file:
 
 ```bash
 node -e "
-import { writeState } from '${RALPH_CODEX_ROOT}/lib/state.mjs';
+import { writeState } from '${RALPH_CODEX_ROOT}/store/state-store.mjs';
 await writeState({
   active: true,
   prompt: PROMPT_HERE,

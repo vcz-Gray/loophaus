@@ -17,7 +17,7 @@ To cancel the Ralph loop:
 
    ```bash
    node -e "
-   import { readState, writeState } from '${RALPH_CODEX_ROOT}/lib/state.mjs';
+   import { readState, writeState } from '${RALPH_CODEX_ROOT}/store/state-store.mjs';
    const state = await readState();
    const iter = state.currentIteration;
    state.active = false;

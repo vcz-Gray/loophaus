@@ -26,14 +26,21 @@ function getHost() {
 
 const host = getHost();
 
+function getFlag(flag) {
+  const idx = args.indexOf(flag);
+  if (idx !== -1 && args[idx + 1] && !args[idx + 1].startsWith("-")) return args[idx + 1];
+  return undefined;
+}
+
 if (showHelp || command === "help") {
   console.log(`loophaus — Control plane for coding agents
 
 Usage:
   npx @graypark/loophaus install [--host <name>] [--force] [--dry-run]
   npx @graypark/loophaus uninstall [--host <name>]
-  npx @graypark/loophaus status
-  npx @graypark/loophaus stats
+  npx @graypark/loophaus status [--name <loop>]
+  npx @graypark/loophaus stats [--name <loop>]
+  npx @graypark/loophaus loops
   npx @graypark/loophaus --version
 
 Hosts:
@@ -47,6 +54,7 @@ Options:
   --host <name>  Target a specific host
   --claude       Shorthand for --host claude-code
   --kiro         Shorthand for --host kiro-cli
+  --name <loop>  Target a named loop (multi-loop)
   --local        Install to project-local .codex/ (Codex only)
   --force        Overwrite existing installation
   --dry-run      Preview changes without modifying files
@@ -117,10 +125,11 @@ async function runUninstall() {
 }
 
 async function runStatus() {
+  const name = getFlag("--name");
   const { read } = await import("../store/state-store.mjs");
-  const state = await read();
+  const state = await read(undefined, name);
   if (!state.active) {
-    console.log("No active loop.");
+    console.log(name ? `No active loop: ${name}` : "No active loop.");
     return;
   }
   const iterInfo = state.maxIterations > 0
@@ -128,6 +137,7 @@ async function runStatus() {
     : `${state.currentIteration}`;
   console.log(`Loop Status`);
   console.log(`\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`);
+  if (name) console.log(`Name:       ${name}`);
   console.log(`Active:     yes`);
   console.log(`Iteration:  ${iterInfo}`);
   console.log(`Promise:    ${state.completionPromise || "(none)"}`);
@@ -150,8 +160,22 @@ async function runStatus() {
   } catch { /* no prd.json */ }
 }
 
+async function runLoops() {
+  const { listLoops } = await import("../core/loop-registry.mjs");
+  const loops = await listLoops();
+  if (loops.length === 0) { console.log("No active loops."); return; }
+  console.log("Active Loops");
+  console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+  for (const l of loops) {
+    const status = l.active ? "active" : "done";
+    const iter = l.maxIterations > 0 ? `${l.currentIteration}/${l.maxIterations}` : `${l.currentIteration}`;
+    console.log(`  ${l.name}  [${status}]  iter ${iter}`);
+  }
+}
+
 async function runStats() {
   const { readTrace } = await import("../core/event-logger.mjs");
+  const { formatCost } = await import("../core/cost-tracker.mjs");
   const events = await readTrace();
   if (events.length === 0) {
     console.log("No trace data found. Run a loop first.");
@@ -168,6 +192,13 @@ async function runStats() {
     console.log(`Last stop reason: ${lastStop.reason || "unknown"}`);
     console.log(`Last stop at:     ${lastStop.ts || "unknown"}`);
   }
+
+  const costEvents = events.filter(e => e.event === "cost" || e.totalCost);
+  if (costEvents.length > 0) {
+    const totalCost = costEvents.reduce((s, e) => s + (e.totalCost || 0), 0);
+    console.log(`Estimated cost:   ${formatCost(totalCost)}`);
+  }
+
   console.log(`Trace file:       .loophaus/trace.jsonl (${events.length} events)`);
 }
 
@@ -177,6 +208,7 @@ try {
     case "uninstall": await runUninstall(); break;
     case "status": await runStatus(); break;
     case "stats": await runStats(); break;
+    case "loops": await runLoops(); break;
     default:
       if (command.startsWith("-")) {
         await runInstall();

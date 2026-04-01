@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { join, dirname } from "node:path";
+import { validateState } from "../core/validate.mjs";
 
 const DEFAULT_STATE = {
   active: false,
@@ -10,10 +11,12 @@ const DEFAULT_STATE = {
   sessionId: "",
 };
 
-export function getStatePath(cwd) {
+export function getStatePath(cwd, name) {
   if (process.env.LOOPHAUS_STATE_FILE) return process.env.LOOPHAUS_STATE_FILE;
   if (process.env.RALPH_STATE_FILE) return process.env.RALPH_STATE_FILE;
-  return join(cwd || process.cwd(), ".loophaus", "state.json");
+  const base = cwd || process.cwd();
+  if (name) return join(base, ".loophaus", "loops", name, "state.json");
+  return join(base, ".loophaus", "state.json");
 }
 
 const LEGACY_PATHS = [
@@ -21,12 +24,17 @@ const LEGACY_PATHS = [
   (cwd) => join(cwd, ".claude", "ralph-loop.local.md"),
 ];
 
-export async function read(cwd) {
-  const primary = getStatePath(cwd);
+export async function read(cwd, name) {
+  const primary = getStatePath(cwd, name);
 
   try {
     const raw = await readFile(primary, "utf-8");
-    return { ...DEFAULT_STATE, ...JSON.parse(raw) };
+    const state = { ...DEFAULT_STATE, ...JSON.parse(raw) };
+    const result = validateState(state);
+    if (!result.valid) {
+      process.stderr.write(`loophaus: state validation warning: ${result.errors.join(", ")}\n`);
+    }
+    return state;
   } catch {
     // Primary not found, try legacy paths
   }
@@ -48,8 +56,12 @@ export async function read(cwd) {
   return { ...DEFAULT_STATE };
 }
 
-export async function write(state, cwd) {
-  const statePath = getStatePath(cwd);
+export async function write(state, cwd, name) {
+  const result = validateState(state);
+  if (!result.valid) {
+    process.stderr.write(`loophaus: writing invalid state: ${result.errors.join(", ")}\n`);
+  }
+  const statePath = getStatePath(cwd, name);
   await mkdir(dirname(statePath), { recursive: true });
   const tmp = statePath + ".tmp";
   await writeFile(tmp, JSON.stringify(state, null, 2), "utf-8");
@@ -74,6 +86,17 @@ function migrateMdFormat(raw) {
     else if (key === "prompt") state.prompt = value.trim();
     else if (key === "session_id") state.sessionId = value.trim();
   }
+  return state;
+}
+
+// Backward-compatible exports (matching lib/state.mjs interface)
+export async function readState(cwd) { return read(cwd); }
+export async function writeState(state, cwd) { return write(state, cwd); }
+export async function resetState(cwd) { return reset(cwd); }
+export async function incrementIteration(cwd) {
+  const state = await read(cwd);
+  state.currentIteration += 1;
+  await write(state, cwd);
   return state;
 }
 
