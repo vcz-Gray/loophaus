@@ -63,6 +63,8 @@ export async function mergeCherryPick(branches) {
 }
 
 export async function merge(strategy, branches, targetBranch) {
+  if (!strategy || typeof strategy !== "string") throw new Error("Merge strategy is required");
+  if (!Array.isArray(branches)) throw new Error("Branches must be an array");
   switch (strategy) {
     case "sequential": return mergeSequential(branches, targetBranch);
     case "squash": return mergeSquash(branches);

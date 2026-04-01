@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { distributeStories } from "../core/parallel-runner.mjs";
-import { STRATEGIES } from "../core/merge-strategy.mjs";
+import { STRATEGIES, merge } from "../core/merge-strategy.mjs";
+import { createWorktree, removeWorktree } from "../core/worktree.mjs";
 
 describe("distributeStories", () => {
   it("distributes evenly", () => {
@@ -53,5 +54,40 @@ describe("STRATEGIES", () => {
     expect(STRATEGIES.sequential).toBeDefined();
     expect(STRATEGIES.squash).toBeDefined();
     expect(STRATEGIES["cherry-pick"]).toBeDefined();
+  });
+});
+
+describe("worktree name validation", () => {
+  it("rejects empty name", async () => {
+    await expect(createWorktree("")).rejects.toThrow("name is required");
+  });
+
+  it("rejects name with path separators", async () => {
+    await expect(createWorktree("../escape")).rejects.toThrow("must not contain");
+    await expect(createWorktree("foo/bar")).rejects.toThrow("must not contain path separators");
+  });
+
+  it("rejects name with special characters", async () => {
+    await expect(createWorktree("foo bar")).rejects.toThrow("invalid characters");
+    await expect(createWorktree("foo;rm")).rejects.toThrow("invalid characters");
+  });
+
+  it("accepts valid names", async () => {
+    // These will fail at git level (not in a repo context), but pass validation
+    await expect(createWorktree("my-worker.0")).rejects.not.toThrow("invalid characters");
+  });
+
+  it("rejects name with .. in removeWorktree", async () => {
+    await expect(removeWorktree("../etc")).rejects.toThrow("must not contain");
+  });
+});
+
+describe("merge parameter validation", () => {
+  it("rejects missing strategy", async () => {
+    await expect(merge(null, ["b1"])).rejects.toThrow("strategy is required");
+  });
+
+  it("rejects non-array branches", async () => {
+    await expect(merge("sequential", "b1")).rejects.toThrow("must be an array");
   });
 });

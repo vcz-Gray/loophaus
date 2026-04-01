@@ -21,7 +21,15 @@ export async function getRepoRoot() {
   }
 }
 
+function validateWorktreeName(name) {
+  if (!name || typeof name !== "string") throw new Error("Worktree name is required");
+  if (/[\/\\]/.test(name)) throw new Error(`Worktree name must not contain path separators: ${name}`);
+  if (name.includes("..")) throw new Error(`Worktree name must not contain '..': ${name}`);
+  if (!/^[a-zA-Z0-9._-]+$/.test(name)) throw new Error(`Worktree name contains invalid characters: ${name}. Use alphanumeric, dot, dash, or underscore.`);
+}
+
 export async function createWorktree(name, baseBranch = "HEAD") {
+  validateWorktreeName(name);
   const root = await getRepoRoot();
   if (!root) throw new Error("Not in a git repository");
 
@@ -40,6 +48,7 @@ export async function createWorktree(name, baseBranch = "HEAD") {
 }
 
 export async function removeWorktree(name) {
+  validateWorktreeName(name);
   const root = await getRepoRoot();
   if (!root) throw new Error("Not in a git repository");
 
