@@ -10,7 +10,7 @@
   <a href="https://github.com/vcz-Gray/loophaus/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg?style=flat-square" alt="node version" />
   <img src="https://img.shields.io/badge/platform-Claude%20Code%20%7C%20Codex%20CLI%20%7C%20Kiro%20CLI-purple.svg?style=flat-square" alt="platform" />
-  <img src="https://img.shields.io/badge/tests-90%20passing-brightgreen.svg?style=flat-square" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-296%20passing-brightgreen.svg?style=flat-square" alt="tests" />
 </p>
 
 <h3 align="center">Control plane for coding agents — iterative dev loops across Claude Code, Codex CLI, and Kiro CLI.</h3>
@@ -117,7 +117,7 @@ That's it. The interview generates a PRD, activates the loop, and starts impleme
 | **Commands** | `/reload-plugins` | native | steering manual mode |
 | **Multi-agent** | Agent tool | subprocesses | steering agents |
 
-All three platforms share the same core engine (`core/engine.mjs`) and state store (`store/state-store.mjs`). Platform-specific adapters handle the differences.
+All three platforms share the same core engine (`core/engine.ts`) and state store (`store/state-store.ts`). Platform-specific adapters handle the differences.
 
 ## Installation
 
@@ -215,60 +215,51 @@ loophaus quality --story US-001 # Score a specific story
 ```
 loophaus/
 ├── bin/
-│   ├── loophaus.mjs              # CLI entry point
-│   ├── install.mjs               # Cross-platform installer
-│   └── uninstall.mjs             # Clean uninstaller
+│   ├── loophaus.ts               # CLI entry point
+│   ├── install.ts                # Cross-platform installer
+│   └── uninstall.ts              # Clean uninstaller
 ├── core/
-│   ├── engine.mjs                # Core loop engine (shared)
-│   ├── event-logger.mjs          # Iteration event tracking
-│   ├── quality-scorer.mjs        # Quality scoring (score, evaluate, log)
-│   ├── refine-loop.mjs           # Keep/discard refinement logic
-│   └── loop.schema.json          # PRD validation schema
+│   ├── types.ts                  # Shared TypeScript interfaces
+│   ├── engine.ts                 # Core loop engine (shared)
+│   ├── event-logger.ts           # Iteration event tracking
+│   ├── quality-scorer.ts         # Quality scoring (score, evaluate, log)
+│   ├── refine-loop.ts            # Keep/discard refinement logic
+│   ├── validate.ts               # PRD + state schema validation
+│   ├── policy.ts                 # Loop policy evaluation
+│   ├── cost-tracker.ts           # Token cost estimation
+│   ├── trace-analyzer.ts         # Trace analysis + comparison
+│   ├── worktree.ts               # Git worktree lifecycle
+│   ├── merge-strategy.ts         # Parallel merge strategies
+│   ├── parallel-runner.ts        # Multi-worktree orchestration
+│   ├── session.ts                # Checkpoint / session management
+│   └── loop-registry.ts          # Multi-loop registry
 ├── store/
-│   └── state-store.mjs           # Loop state persistence
-├── platforms/
-│   ├── claude-code/
-│   │   ├── adapter.mjs           # Claude Code platform adapter
-│   │   └── installer.mjs         # Plugin cache installer
-│   ├── codex-cli/
-│   │   ├── adapter.mjs           # Codex CLI platform adapter
-│   │   └── installer.mjs         # hooks.json installer
-│   └── kiro-cli/
-│       ├── adapter.mjs           # Kiro CLI platform adapter
-│       └── installer.mjs         # agents/ + steering/ installer
-├── hooks/
-│   ├── stop-hook.mjs             # Universal stop hook (Node.js)
-│   └── hooks.json                # Hook configuration template
-├── commands/
-│   ├── loop-plan.md              # /loop-plan command definition
-│   ├── loop.md                   # /loop command definition
-│   ├── loop-stop.md              # /loop-stop command definition
-│   ├── loop-pulse.md             # /loop-pulse command definition
-│   └── help.md                   # /help command definition
-├── skills/
-│   ├── ralph-interview/          # Interactive PRD generator
-│   ├── ralph-orchestrator/       # Multi-agent patterns
-│   ├── ralph-claude-interview/   # Claude Code interview + Skill tool
-│   ├── ralph-claude-loop/        # Claude Code PRD-driven loop
-│   ├── ralph-claude-cancel/      # Claude Code cancel
-│   └── ralph-claude-orchestrator/# Claude Code Agent tool patterns
+│   └── state-store.ts            # Loop state persistence
 ├── lib/
-│   ├── paths.mjs                 # Cross-platform path resolution
-│   ├── state.mjs                 # Legacy state management
-│   └── stop-hook-core.mjs        # Testable hook logic
+│   ├── paths.ts                  # Cross-platform path resolution
+│   └── stop-hook-core.ts         # Testable hook logic
+├── platforms/
+│   ├── claude-code/installer.mjs # Plugin cache installer
+│   ├── codex-cli/installer.mjs   # hooks.json installer
+│   └── kiro-cli/installer.mjs    # agents/ + steering/ installer
+├── hooks/
+│   └── stop-hook.mjs             # Universal stop hook (Node.js)
+├── commands/                     # Slash command definitions
+├── skills/                       # Platform-specific skill definitions
 ├── .claude-plugin/
 │   └── plugin.json               # Claude Code marketplace manifest
-└── tests/                        # 90 test cases (vitest)
+├── dist/                         # Compiled output (tsc)
+└── tests/                        # 296 test cases (vitest)
 ```
 
 ## PRD Format
 
-loophaus uses a `prd.json` format compatible with the ralph-skills ecosystem:
+loophaus uses a `prd.json` format:
 
 ```json
 {
   "project": "MyApp",
-  "branchName": "loop/auth-system",
+  "branchName": "feature/auth-system",
   "description": "JWT authentication with login UI",
   "userStories": [
     {
@@ -290,30 +281,19 @@ loophaus uses a `prd.json` format compatible with the ralph-skills ecosystem:
 
 Each story is sized to complete in one iteration (one context window). Dependencies are ordered by priority. The loop engine picks the next story where `passes` is `false` and works on it until verification succeeds.
 
-## Migrating from ralph-codex
+## Update
 
-`@graypark/ralph-codex` has been deprecated in favor of `@graypark/loophaus`. The migration is straightforward:
+```bash
+npm install -g @graypark/loophaus@latest
+loophaus install --force
+```
 
-1. **Install loophaus** — it replaces ralph-codex entirely:
-   ```bash
-   npx @graypark/loophaus install --force
-   ```
+## Uninstall
 
-2. **State files auto-migrate** — Existing `prd.json` and `progress.txt` files are fully compatible. No changes needed.
-
-3. **Command mapping:**
-
-   | ralph-codex | loophaus |
-   |-------------|----------|
-   | `/ralph-interview` | `/loop-plan` |
-   | `/ralph-loop` | `/loop` |
-   | `/cancel-ralph` | `/loop-stop` |
-   | (none) | `/loop-pulse` |
-
-4. **Uninstall the old package** (optional):
-   ```bash
-   npx @graypark/ralph-codex uninstall
-   ```
+```bash
+loophaus uninstall
+npm uninstall -g @graypark/loophaus
+```
 
 ## Development
 
@@ -321,7 +301,9 @@ Each story is sized to complete in one iteration (one context window). Dependenc
 git clone https://github.com/vcz-Gray/loophaus.git
 cd loophaus
 npm install
-npm test          # 90 test cases
+npm test          # 296 test cases
+npm run typecheck  # TypeScript strict mode
+npm run build      # Compile to dist/
 npx vitest        # watch mode
 ```
 

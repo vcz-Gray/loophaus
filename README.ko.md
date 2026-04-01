@@ -10,7 +10,7 @@
   <a href="https://github.com/vcz-Gray/loophaus/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg?style=flat-square" alt="node version" />
   <img src="https://img.shields.io/badge/platform-Claude%20Code%20%7C%20Codex%20CLI%20%7C%20Kiro%20CLI-purple.svg?style=flat-square" alt="platform" />
-  <img src="https://img.shields.io/badge/tests-90%20passing-brightgreen.svg?style=flat-square" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-296%20passing-brightgreen.svg?style=flat-square" alt="tests" />
 </p>
 
 <p align="center">
@@ -156,7 +156,7 @@ loophaus는 세 개의 주요 코딩 에이전트 플랫폼을 지원합니다:
 | Stop hook | bash 기반 | Node.js 기반 | bash 기반 |
 | 루프 실행 | Skill tool | 네이티브 커맨드 | 네이티브 커맨드 |
 | 멀티 에이전트 | Agent tool | 서브에이전트 | 서브에이전트 |
-| 상태 파일 | `.claude/ralph-loop.local.md` | `progress.txt` | `progress.txt` |
+| 상태 파일 | `.loophaus/state.json` | `.loophaus/state.json` | `.loophaus/state.json` |
 
 ## 설치
 
@@ -271,49 +271,52 @@ loophaus quality --story US-001 # 특정 스토리 품질 측정
 
 ```
 loophaus/
-├── .claude-plugin/plugin.json        # Claude Code 마켓플레이스 매니페스트
 ├── bin/
-│   ├── loophaus.mjs                  # CLI 진입점
-│   ├── install.mjs                   # 크로스 플랫폼 설치기
-│   └── uninstall.mjs                 # 제거기
-├── hooks/
-│   └── stop-hook.mjs                 # 핵심 루프 엔진 (Node.js)
-├── commands/
-│   ├── loop.md                       # /loop 커맨드
-│   ├── loop-plan.md                  # /loop-plan 커맨드
-│   ├── loop-stop.md                  # /loop-stop 커맨드
-│   ├── loop-pulse.md                 # /loop-pulse 커맨드
-│   └── help.md                       # /help 커맨드
-├── platforms/                        # 호스트별 어댑터
-├── store/                            # 상태 저장소
+│   ├── loophaus.ts                   # CLI 진입점
+│   ├── install.ts                    # 크로스 플랫폼 설치기
+│   └── uninstall.ts                  # 제거기
 ├── core/
-│   ├── engine.mjs                    # 핵심 루프 엔진
-│   ├── event-logger.mjs              # 이벤트 추적
-│   ├── quality-scorer.mjs            # 품질 측정 (점수, 평가, 로깅)
-│   ├── refine-loop.mjs               # 유지/폐기 개선 로직
-│   └── loop.schema.json              # PRD 검증 스키마
-├── skills/
-│   ├── ralph-interview/SKILL.md          # Codex: 인터랙티브 커맨드 생성기
-│   ├── ralph-orchestrator/SKILL.md       # Codex: 멀티 에이전트 패턴
-│   ├── ralph-claude-interview/SKILL.md   # Claude: 인터뷰 + Skill tool 호출
-│   ├── ralph-claude-loop/SKILL.md        # Claude: PRD 기반 루프
-│   ├── ralph-claude-cancel/SKILL.md      # Claude: 루프 취소
-│   └── ralph-claude-orchestrator/SKILL.md # Claude: Agent tool 패턴
+│   ├── types.ts                      # 공유 TypeScript 인터페이스
+│   ├── engine.ts                     # 핵심 루프 엔진
+│   ├── event-logger.ts              # 이벤트 추적
+│   ├── quality-scorer.ts            # 품질 측정 (점수, 평가, 로깅)
+│   ├── refine-loop.ts               # 유지/폐기 개선 로직
+│   ├── validate.ts                  # PRD + 상태 스키마 검증
+│   ├── policy.ts                    # 루프 정책 평가
+│   ├── cost-tracker.ts              # 토큰 비용 추정
+│   ├── trace-analyzer.ts            # 트레이스 분석 + 비교
+│   ├── worktree.ts                  # Git 워크트리 관리
+│   ├── merge-strategy.ts            # 병렬 머지 전략
+│   ├── parallel-runner.ts           # 멀티 워크트리 오케스트레이션
+│   ├── session.ts                   # 체크포인트 / 세션 관리
+│   └── loop-registry.ts             # 멀티 루프 레지스트리
+├── store/
+│   └── state-store.ts               # 루프 상태 저장소
 ├── lib/
-│   ├── paths.mjs                     # 크로스 플랫폼 경로
-│   ├── state.mjs                     # 루프 상태 관리
-│   └── stop-hook-core.mjs            # 테스트 가능한 hook 로직
-└── tests/                            # 90개 테스트 케이스 (vitest)
+│   ├── paths.ts                     # 크로스 플랫폼 경로
+│   └── stop-hook-core.ts            # 테스트 가능한 hook 로직
+├── platforms/
+│   ├── claude-code/installer.mjs    # 플러그인 캐시 설치기
+│   ├── codex-cli/installer.mjs      # hooks.json 설치기
+│   └── kiro-cli/installer.mjs       # agents/ + steering/ 설치기
+├── hooks/
+│   └── stop-hook.mjs                # 범용 Stop hook (Node.js)
+├── commands/                        # 슬래시 커맨드 정의
+├── skills/                          # 플랫폼별 스킬 정의
+├── .claude-plugin/
+│   └── plugin.json                  # Claude Code 마켓플레이스 매니페스트
+├── dist/                            # 컴파일 출력 (tsc)
+└── tests/                           # 296개 테스트 케이스 (vitest)
 ```
 
 ## PRD 포맷
 
-loophaus는 **ralph-skills 호환** `prd.json` 포맷을 사용합니다:
+loophaus는 `prd.json` 포맷을 사용합니다:
 
 ```json
 {
   "project": "MyApp",
-  "branchName": "ralph/auth-system",
+  "branchName": "feature/auth-system",
   "description": "JWT 인증 시스템과 로그인 UI",
   "userStories": [
     {
@@ -334,37 +337,6 @@ loophaus는 **ralph-skills 호환** `prd.json` 포맷을 사용합니다:
 ```
 
 각 스토리는 **한 번의 반복**(하나의 컨텍스트 윈도우)에서 완료할 수 있는 크기입니다. 의존성은 priority 순으로 정렬됩니다.
-
-## ralph-codex에서 마이그레이션
-
-기존에 `ralph-codex`를 사용하고 있었다면, loophaus가 자동으로 마이그레이션을 처리합니다:
-
-- **상태 파일 호환** — 기존 `prd.json`과 `progress.txt`를 그대로 사용 가능
-- **자동 감지** — 설치 시 기존 ralph-codex 설정을 감지하고 loophaus 포맷으로 업그레이드
-- **커맨드 매핑** — 기존 `/ralph-interview` → `/loop-plan`, `/ralph-loop` → `/loop`, `/cancel-ralph` → `/loop-stop`
-
-마이그레이션 방법:
-
-```bash
-# 기존 ralph-codex 제거
-npx @graypark/ralph-codex uninstall
-
-# loophaus 설치 (기존 상태 파일 자동 인식)
-npx @graypark/loophaus install
-```
-
-기존 PRD 파일은 수정 없이 그대로 동작합니다. `progress.txt`에 축적된 학습 내용도 보존됩니다.
-
-## 생태계 호환성
-
-loophaus는 기존 Ralph 도구들과 호환됩니다:
-
-| 도구 | 호환성 |
-| --- | --- |
-| `ralph-skills:prd` | 동일한 `prd.json` 포맷 — 거기서 PRD를 생성하고 여기서 루프 실행 |
-| `ralph-skills:ralph` | 동일한 `progress.txt`, `passes` 추적, `COMPLETE` promise |
-| 공식 `ralph-loop` 플러그인 | PRD 파일이 양쪽 stop hook에서 동작 |
-| `snarktank/ralph` | 호환되는 PRD 구조 및 반복 패턴 |
 
 ## 멀티 에이전트 오케스트레이션
 
@@ -395,19 +367,23 @@ Phase 2 — 순차 수정 (루프):
 ## 업데이트
 
 ```bash
-npx @graypark/loophaus install --force
+npm install -g @graypark/loophaus@latest
+loophaus install --force
 ```
 
 ## 제거
 
 ```bash
-npx @graypark/loophaus uninstall
+loophaus uninstall
+npm uninstall -g @graypark/loophaus
 ```
 
 ## 개발
 
 ```bash
-npm install && npm test   # 90개 테스트
+npm install && npm test    # 296개 테스트
+npm run typecheck          # TypeScript strict 모드
+npm run build              # dist/로 컴파일
 npx vitest                # watch 모드
 ```
 
