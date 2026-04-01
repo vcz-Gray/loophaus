@@ -10,7 +10,7 @@
   <a href="https://github.com/vcz-Gray/loophaus/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg?style=flat-square" alt="node version" />
   <img src="https://img.shields.io/badge/platform-Claude%20Code%20%7C%20Codex%20CLI%20%7C%20Kiro%20CLI-purple.svg?style=flat-square" alt="platform" />
-  <img src="https://img.shields.io/badge/tests-36%20passing-brightgreen.svg?style=flat-square" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-90%20passing-brightgreen.svg?style=flat-square" alt="tests" />
 </p>
 
 <p align="center">
@@ -60,8 +60,10 @@ AI 에이전트가 연속 루프에서 태스크를 수행합니다. 매 반복�
               │  1. prd.json + progress 읽기    │
               │  2. 다음 스토리 선택 (passes=false)│
               │  3. 구현 + 검증                 │
-              │  4. 커밋 + progress 업데이트     │
-              │  5. 종료 시도                   │
+              │  4. 품질 측정 (score 0-100)     │
+              │  5. 개선 루프 (유지/폐기)        │
+              │  6. 커밋 + progress 업데이트     │
+              │  7. 종료 시도                   │
               │         │                       │
               │    Stop Hook이 가로채기         │
               │    프롬프트 재주입               │
@@ -76,8 +78,11 @@ AI 에이전트가 연속 루프에서 태스크를 수행합니다. 매 반복�
 ## 빠른 시작
 
 ```bash
-npx @graypark/loophaus install
+npm install -g @graypark/loophaus
+loophaus install
 ```
+
+> **참고:** `npx @graypark/loophaus install`은 일부 npm 버전에서 bin 해석 캐시 버그로 실패할 수 있습니다. 위의 글로벌 설치 방식을 권장합니다.
 
 이후 AI 코딩 세션에서:
 
@@ -155,22 +160,29 @@ loophaus는 세 개의 주요 코딩 에이전트 플랫폼을 지원합니다:
 
 ## 설치
 
-### 자동 감지 설치 (권장)
+### 글로벌 설치 (권장)
 
-설치된 호스트를 자동으로 감지하여 설치합니다:
+```bash
+npm install -g @graypark/loophaus
+loophaus install
+```
+
+### npx로 설치
 
 ```bash
 npx @graypark/loophaus install
 ```
+
+> `npx`는 일부 npm 버전에서 bin 해석 캐시 버그로 실패할 수 있습니다. 실패 시 위의 글로벌 설치를 사용하세요.
 
 ### 호스트별 설치
 
 특정 호스트만 대상으로 설치:
 
 ```bash
-npx @graypark/loophaus install --claude    # Claude Code만
-npx @graypark/loophaus install --host codex-cli  # Codex CLI만
-npx @graypark/loophaus install --kiro      # Kiro CLI만
+loophaus install --claude              # Claude Code만
+loophaus install --host codex-cli      # Codex CLI만
+loophaus install --kiro                # Kiro CLI만
 ```
 
 | 플래그 | 설명 |
@@ -201,11 +213,58 @@ npx @graypark/loophaus install --kiro      # Kiro CLI만
 ## CLI
 
 ```bash
-npx @graypark/loophaus install     # 자동 감지 설치
-npx @graypark/loophaus status      # 설치 상태 확인
-npx @graypark/loophaus stats       # 루프 실행 통계
-npx @graypark/loophaus uninstall   # 제거
-npx @graypark/loophaus --version   # 버전 확인
+loophaus install     # 자동 감지 설치
+loophaus status      # 설치 상태 확인
+loophaus stats       # 루프 실행 통계
+loophaus quality     # 품질 점수 측정
+loophaus uninstall   # 제거
+loophaus --version   # 버전 확인
+```
+
+## Quality Loop (v3.4.0+)
+
+v3.4.0에서 도입된 **Quality Loop** — [karpathy/autoresearch](https://github.com/karpathy/autoresearch)의 실험→측정→유지/폐기 패턴을 코드 품질 개선에 적용.
+
+테스트가 통과하면 "완료"로 처리하던 기존 방식 대신, `/loop-plan`이 이제 **품질을 측정**(0-100)하고 임계값을 충족할 때까지 **반복 개선**합니다.
+
+```
+Phase 4: 구현
+     ↓
+Phase 5: 측정 (score 0-100)
+     ↓           ↑
+Phase 6: 개선 루프
+  점수 향상? → 유지 (commit)
+  점수 하락? → 폐기 (git reset)
+  최대 시도 도달? → 다음으로
+     ↓
+Phase 7: 보고서 (품질 점수 포함)
+```
+
+| autoresearch | loophaus |
+|-------------|----------|
+| `val_bpb` | quality score (가중치: tests, typecheck, lint, verify, diff, custom) |
+| `results.tsv` | `.loophaus/results.tsv` |
+| keep → advance | 점수 향상 → commit |
+| discard → revert | 점수 하락 → `git reset --hard` |
+| NEVER STOP | 스토리당 최대 3회 시도 (설정 가능) |
+
+### 설정
+
+```json
+{
+  "qualityThreshold": 80,
+  "maxRefineAttempts": 3,
+  "qualityConfig": {
+    "weights": { "tests": 30, "typecheck": 25, "lint": 15, "verify": 15, "diff": 10, "custom": 5 }
+  }
+}
+```
+
+### CLI
+
+```bash
+loophaus quality                # 전체 스토리 품질 측정
+loophaus quality --story US-001 # 특정 스토리 품질 측정
 ```
 
 ## 아키텍처
@@ -227,7 +286,12 @@ loophaus/
 │   └── help.md                       # /help 커맨드
 ├── platforms/                        # 호스트별 어댑터
 ├── store/                            # 상태 저장소
-├── core/                             # 핵심 로직
+├── core/
+│   ├── engine.mjs                    # 핵심 루프 엔진
+│   ├── event-logger.mjs              # 이벤트 추적
+│   ├── quality-scorer.mjs            # 품질 측정 (점수, 평가, 로깅)
+│   ├── refine-loop.mjs               # 유지/폐기 개선 로직
+│   └── loop.schema.json              # PRD 검증 스키마
 ├── skills/
 │   ├── ralph-interview/SKILL.md          # Codex: 인터랙티브 커맨드 생성기
 │   ├── ralph-orchestrator/SKILL.md       # Codex: 멀티 에이전트 패턴
@@ -239,7 +303,7 @@ loophaus/
 │   ├── paths.mjs                     # 크로스 플랫폼 경로
 │   ├── state.mjs                     # 루프 상태 관리
 │   └── stop-hook-core.mjs            # 테스트 가능한 hook 로직
-└── tests/                            # 36개 테스트 케이스 (vitest)
+└── tests/                            # 90개 테스트 케이스 (vitest)
 ```
 
 ## PRD 포맷
@@ -343,7 +407,7 @@ npx @graypark/loophaus uninstall
 ## 개발
 
 ```bash
-npm install && npm test   # 36개 테스트
+npm install && npm test   # 90개 테스트
 npx vitest                # watch 모드
 ```
 

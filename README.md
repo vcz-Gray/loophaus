@@ -10,7 +10,7 @@
   <a href="https://github.com/vcz-Gray/loophaus/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg?style=flat-square" alt="node version" />
   <img src="https://img.shields.io/badge/platform-Claude%20Code%20%7C%20Codex%20CLI%20%7C%20Kiro%20CLI-purple.svg?style=flat-square" alt="platform" />
-  <img src="https://img.shields.io/badge/tests-36%20passing-brightgreen.svg?style=flat-square" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-90%20passing-brightgreen.svg?style=flat-square" alt="tests" />
 </p>
 
 <h3 align="center">Control plane for coding agents — iterative dev loops across Claude Code, Codex CLI, and Kiro CLI.</h3>
@@ -62,8 +62,10 @@ An AI agent works on a task in a continuous loop. Each iteration starts with fre
               │  1. Read prd.json + progress    │
               │  2. Pick next story (passes=false)│
               │  3. Implement + verify          │
-              │  4. Commit + update progress    │
-              │  5. Exit attempt                │
+              │  4. Evaluate (score 0-100)      │
+              │  5. Refine loop (keep/discard)  │
+              │  6. Commit + update progress    │
+              │  7. Exit attempt                │
               │         │                       │
               │    Stop Hook intercepts         │
               │    Re-injects prompt            │
@@ -81,8 +83,11 @@ An AI agent works on a task in a continuous loop. Each iteration starts with fre
 ## Quick Start
 
 ```bash
-npx @graypark/loophaus install
+npm install -g @graypark/loophaus
+loophaus install
 ```
+
+> **Note:** `npx @graypark/loophaus install` may fail on some npm versions due to a bin resolution cache bug. Use the global install above for reliable setup.
 
 The installer auto-detects your host (Claude Code, Codex CLI, or Kiro CLI) and sets up everything — stop hook, commands, and skills.
 
@@ -116,18 +121,27 @@ All three platforms share the same core engine (`core/engine.mjs`) and state sto
 
 ## Installation
 
-### Auto-detect (recommended)
+### Global install (recommended)
+
+```bash
+npm install -g @graypark/loophaus
+loophaus install
+```
+
+### Via npx
 
 ```bash
 npx @graypark/loophaus install
 ```
 
+> `npx` may fail on some npm versions due to a bin resolution cache bug. If it does, use the global install above.
+
 ### Specify host
 
 ```bash
-npx @graypark/loophaus install --host claude-code
-npx @graypark/loophaus install --host codex-cli
-npx @graypark/loophaus install --host kiro-cli
+loophaus install --host claude-code
+loophaus install --host codex-cli
+loophaus install --host kiro-cli
 ```
 
 ### Flags
@@ -146,16 +160,54 @@ loophaus ships a standalone CLI for management tasks:
 loophaus install          # Install to detected host
 loophaus status           # Show current loop state and active host
 loophaus stats            # Iteration history and completion metrics
+loophaus quality          # Run quality scoring on current stories
 loophaus uninstall        # Clean removal from all hosts
 ```
 
-Or via npx:
+## Quality Loop (v3.4.0+)
+
+loophaus v3.4.0 introduces the **Quality Loop** — inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch)'s experiment→measure→keep/discard pattern.
+
+Instead of simply marking a story as "done" when tests pass, `/loop-plan` now **measures quality** (0-100) and **iteratively refines** until the score meets the threshold.
+
+```
+Phase 4: Implement
+     ↓
+Phase 5: Evaluate (score 0-100)
+     ↓           ↑
+Phase 6: Refine Loop
+  score improved? → keep (commit)
+  score declined? → discard (git reset)
+  max attempts reached? → move on
+     ↓
+Phase 7: Report (with quality scores)
+```
+
+| autoresearch | loophaus |
+|-------------|----------|
+| `val_bpb` | quality score (weighted: tests, typecheck, lint, verify, diff, custom) |
+| `results.tsv` | `.loophaus/results.tsv` |
+| keep → advance | score improved → commit |
+| discard → revert | score declined → `git reset --hard` |
+| NEVER STOP | max 3 attempts per story (configurable) |
+
+### Configuration
+
+```json
+{
+  "qualityThreshold": 80,
+  "maxRefineAttempts": 3,
+  "qualityConfig": {
+    "weights": { "tests": 30, "typecheck": 25, "lint": 15, "verify": 15, "diff": 10, "custom": 5 }
+  }
+}
+```
+
+### CLI
 
 ```bash
-npx @graypark/loophaus install
-npx @graypark/loophaus status
-npx @graypark/loophaus stats
-npx @graypark/loophaus uninstall
+loophaus quality               # Score all stories
+loophaus quality --story US-001 # Score a specific story
 ```
 
 ## Architecture
@@ -169,6 +221,8 @@ loophaus/
 ├── core/
 │   ├── engine.mjs                # Core loop engine (shared)
 │   ├── event-logger.mjs          # Iteration event tracking
+│   ├── quality-scorer.mjs        # Quality scoring (score, evaluate, log)
+│   ├── refine-loop.mjs           # Keep/discard refinement logic
 │   └── loop.schema.json          # PRD validation schema
 ├── store/
 │   └── state-store.mjs           # Loop state persistence
@@ -204,7 +258,7 @@ loophaus/
 │   └── stop-hook-core.mjs        # Testable hook logic
 ├── .claude-plugin/
 │   └── plugin.json               # Claude Code marketplace manifest
-└── tests/                        # 36 test cases (vitest)
+└── tests/                        # 90 test cases (vitest)
 ```
 
 ## PRD Format
@@ -267,7 +321,7 @@ Each story is sized to complete in one iteration (one context window). Dependenc
 git clone https://github.com/vcz-Gray/loophaus.git
 cd loophaus
 npm install
-npm test          # 36 test cases
+npm test          # 90 test cases
 npx vitest        # watch mode
 ```
 
