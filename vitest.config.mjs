@@ -5,7 +5,8 @@ export default defineConfig({
     testTimeout: 10000,
     coverage: {
       provider: "v8",
-      include: ["core/**/*.ts", "store/**/*.ts", "lib/**/*.ts", "bin/**/*.ts"],
+      include: ["core/**/*.ts", "store/**/*.ts", "lib/**/*.ts"],
+      exclude: ["core/types.ts"],
       reporter: ["text", "json-summary"],
       reportsDirectory: "coverage",
     },

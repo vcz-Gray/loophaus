@@ -9,6 +9,16 @@ import {
   getAgentsHome,
   getAgentsSkillsDir,
   isWindows,
+  getPackageVersion,
+  getLocalCodexDir,
+  getLocalPluginDir,
+  getLocalHooksJsonPath,
+  getLocalSkillsDir,
+  getClaudeHome,
+  getClaudePluginsDir,
+  getClaudePluginCacheDir,
+  getClaudeSettingsPath,
+  getClaudeInstalledPluginsPath,
 } from "../lib/paths.js";
 
 let originalCodexHome;
@@ -76,5 +86,49 @@ describe("paths.mjs", () => {
     for (const p of paths) {
       expect(p).toContain(sep);
     }
+  });
+
+  it("getPackageVersion returns a semver string", () => {
+    const v = getPackageVersion();
+    expect(v).toMatch(/^\d+\.\d+\.\d+/);
+  });
+
+  it("getLocalCodexDir is relative to cwd", () => {
+    expect(getLocalCodexDir()).toContain(".codex");
+  });
+
+  it("getLocalPluginDir includes loophaus", () => {
+    expect(getLocalPluginDir()).toContain("loophaus");
+  });
+
+  it("getLocalHooksJsonPath ends with hooks.json", () => {
+    expect(getLocalHooksJsonPath()).toMatch(/hooks\.json$/);
+  });
+
+  it("getLocalSkillsDir ends with skills", () => {
+    expect(getLocalSkillsDir()).toMatch(/skills$/);
+  });
+
+  it("getClaudeHome returns ~/.claude", () => {
+    expect(getClaudeHome()).toContain(".claude");
+    expect(getClaudeHome().startsWith(homedir())).toBe(true);
+  });
+
+  it("getClaudePluginsDir includes plugins", () => {
+    expect(getClaudePluginsDir()).toContain("plugins");
+  });
+
+  it("getClaudePluginCacheDir includes version", () => {
+    const dir = getClaudePluginCacheDir("1.2.3");
+    expect(dir).toContain("1.2.3");
+    expect(dir).toContain("loophaus");
+  });
+
+  it("getClaudeSettingsPath ends with settings.json", () => {
+    expect(getClaudeSettingsPath()).toMatch(/settings\.json$/);
+  });
+
+  it("getClaudeInstalledPluginsPath ends with installed_plugins.json", () => {
+    expect(getClaudeInstalledPluginsPath()).toMatch(/installed_plugins\.json$/);
   });
 });
