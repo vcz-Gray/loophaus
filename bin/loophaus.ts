@@ -21,12 +21,13 @@ const showHelp: boolean = args.includes("--help") || args.includes("-h");
 const KNOWN_FLAGS = new Set([
   "--help", "-h", "--version", "--dry-run", "--force", "--local", "--verbose",
   "--host", "--claude", "--kiro", "--name", "--speed", "--count", "--base", "--story",
+  "--all", "--traces", "--sessions", "--results", "--before", "--config",
 ]);
 
 const VALID_COMMANDS = [
   "install", "uninstall", "status", "stats", "loops", "watch",
   "replay", "compare", "worktree", "parallel", "quality",
-  "sessions", "resume", "help",
+  "sessions", "resume", "benchmark", "clean", "help",
 ];
 
 function validateFlags(): void {
@@ -124,6 +125,8 @@ Usage:
   npx @graypark/loophaus worktree <create|remove|list>
   npx @graypark/loophaus parallel <prd.json> [--count N] [--base branch]
   npx @graypark/loophaus quality [--story US-001]
+  npx @graypark/loophaus benchmark
+  npx @graypark/loophaus clean [--all|--traces|--sessions|--results] [--before DATE]
   npx @graypark/loophaus sessions
   npx @graypark/loophaus resume <session-id>
   npx @graypark/loophaus --version
@@ -578,6 +581,120 @@ async function runQuality(): Promise<void> {
   }
 }
 
+async function runBenchmarkCmd(): Promise<void> {
+  const { runBenchmark, logBenchmark, readBenchmarkHistory, scoreBenchmark } = await import("../core/benchmark.js");
+
+  const s = spinner("Running benchmark...");
+  let result;
+  try {
+    result = await runBenchmark();
+  } finally {
+    s.stop();
+  }
+
+  await logBenchmark(result);
+
+  console.log("Project Benchmark");
+  console.log("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n");
+  console.log(`  Score: ${result.score}/100 (${result.grade})\n`);
+
+  const labels: Record<string, string> = {
+    tests: "Tests",
+    typecheck: "Typecheck",
+    build: "Build",
+    testTime: "Test Time",
+    coverage: "Coverage",
+    pkgSize: "Pkg Size",
+  };
+
+  for (const [key, info] of Object.entries(result.breakdown)) {
+    const bar = "\u2588".repeat(info.score) + "\u2591".repeat(10 - info.score);
+    const label = (labels[key] || key).padEnd(12);
+    console.log(`  ${label} ${bar} ${info.score}/10`);
+  }
+
+  // Trend
+  const history = await readBenchmarkHistory();
+  if (history.length > 1) {
+    const prev = history[history.length - 2];
+    const diff = result.score - prev.score;
+    const arrow = diff > 0 ? `\x1b[32m+${diff}\x1b[0m` : diff < 0 ? `\x1b[31m${diff}\x1b[0m` : "0";
+    console.log(`\n  Trend: ${prev.score} → ${result.score} (${arrow})`);
+    console.log(`  Prev:  v${prev.version} @ ${prev.commit} (${prev.ts.split("T")[0]})`);
+  }
+
+  console.log(`\n  Recorded to .loophaus/benchmark.tsv (${history.length} entries)`);
+}
+
+async function runCleanCmd(): Promise<void> {
+  const { cleanAll, cleanTraces, cleanSessions, cleanResults, readConfig } = await import("../core/cleanup.js");
+
+  const hasFlag = (f: string): boolean => args.includes(f);
+
+  if (hasFlag("--config")) {
+    const config = await readConfig();
+    console.log("Cleanup Config (.loophaus/config.json)");
+    console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+    console.log(`  onNewPlan:           ${config.cleanup.onNewPlan}`);
+    console.log(`  traceRetentionDays:  ${config.cleanup.traceRetentionDays}`);
+    console.log(`  sessionRetentionDays: ${config.cleanup.sessionRetentionDays}`);
+    return;
+  }
+
+  if (!hasFlag("--all") && !hasFlag("--traces") && !hasFlag("--sessions") && !hasFlag("--results")) {
+    console.log(`Usage: loophaus clean [options]
+
+Options:
+  --all        Remove traces + results + sessions (not benchmark.tsv)
+  --traces     Remove trace.jsonl only
+  --sessions   Remove session checkpoints
+  --results    Remove results.tsv only
+  --before DATE  Only remove data before this date (sessions only)
+  --config     Show current cleanup policy`);
+    return;
+  }
+
+  const beforeRaw = getFlag("--before");
+  const before = beforeRaw ? new Date(beforeRaw) : undefined;
+
+  let result;
+  if (hasFlag("--all")) {
+    result = await cleanAll();
+  } else {
+    result = { removed: [] as string[], archived: [] as string[], skipped: [] as string[] };
+    if (hasFlag("--traces")) {
+      const r = await cleanTraces();
+      result.removed.push(...r.removed);
+      result.skipped.push(...r.skipped);
+    }
+    if (hasFlag("--results")) {
+      const r = await cleanResults();
+      result.removed.push(...r.removed);
+      result.skipped.push(...r.skipped);
+    }
+    if (hasFlag("--sessions")) {
+      const r = await cleanSessions({ before });
+      result.removed.push(...r.removed);
+      result.skipped.push(...r.skipped);
+    }
+  }
+
+  console.log("Clean Complete");
+  console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+  if (result.removed.length > 0) {
+    console.log(`  Removed: ${result.removed.join(", ")}`);
+  }
+  if (result.archived.length > 0) {
+    console.log(`  Archived: ${result.archived.join(", ")}`);
+  }
+  if (result.skipped.length > 0) {
+    console.log(`  Skipped: ${result.skipped.join(", ")}`);
+  }
+  if (result.removed.length === 0 && result.archived.length === 0) {
+    console.log("  Nothing to clean.");
+  }
+}
+
 try {
   switch (command) {
     case "install": await runInstall(); break;
@@ -591,6 +708,8 @@ try {
     case "worktree": await runWorktree(); break;
     case "parallel": await runParallelCmd(); break;
     case "quality": await runQuality(); break;
+    case "benchmark": await runBenchmarkCmd(); break;
+    case "clean": await runCleanCmd(); break;
     case "sessions": await runSessions(); break;
     case "resume": await runResume(); break;
     default:
