@@ -11,6 +11,28 @@ The user runs `/loop-plan` once and gets a single merged branch with all work do
 
 ---
 
+## Phase 0: Cleanup Previous Data
+
+Before starting a new plan, apply the cleanup policy from `.loophaus/config.json`:
+
+```javascript
+import { applyOnNewPlanPolicy } from "../core/cleanup.js";
+const cleanResult = await applyOnNewPlanPolicy();
+```
+
+| Policy | Behavior |
+|--------|----------|
+| `"keep"` (default) | Do nothing — old traces/results persist alongside new data |
+| `"archive"` | Move trace.jsonl + results.tsv + sessions/ to `.loophaus/archive/{date}/` |
+| `"delete"` | Remove trace.jsonl + results.tsv + sessions/ (benchmark.tsv always preserved) |
+
+If cleanup was performed, briefly note it (e.g., "Archived previous loop data.") then continue.
+
+To configure: `loophaus clean --config` to view, or create `.loophaus/config.json`:
+```json
+{ "cleanup": { "onNewPlan": "archive", "traceRetentionDays": 30, "sessionRetentionDays": 7 } }
+```
+
 ## Phase 1: Discovery Interview
 
 Ask 3-5 focused questions about $ARGUMENTS:
