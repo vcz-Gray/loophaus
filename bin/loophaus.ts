@@ -21,7 +21,7 @@ const showHelp: boolean = args.includes("--help") || args.includes("-h");
 const KNOWN_FLAGS = new Set([
   "--help", "-h", "--version", "--dry-run", "--force", "--local", "--verbose",
   "--host", "--claude", "--kiro", "--name", "--speed", "--count", "--base", "--story",
-  "--all", "--traces", "--sessions", "--results", "--before", "--config",
+  "--all", "--traces", "--sessions", "--results", "--before", "--config", "--quiet",
 ]);
 
 const VALID_COMMANDS = [
@@ -174,6 +174,12 @@ async function detectHosts(): Promise<string[]> {
 }
 
 async function runInstall(): Promise<void> {
+  const { getPackageVersion } = await import("../lib/paths.js");
+  const version = getPackageVersion();
+  const quiet = args.includes("--quiet");
+  const loophausDir = join(process.env.HOME || "~", ".loophaus");
+  const welcomePath = join(loophausDir, ".welcome-seen");
+
   let targets: string[] = [];
 
   if (host) {
@@ -206,6 +212,57 @@ async function runInstall(): Promise<void> {
     } finally {
       s?.stop();
     }
+  }
+
+  if (quiet || dryRun) return;
+
+  // First-run welcome or upgrade notice
+  const { mkdir: mk, writeFile: wf, readFile: rf } = await import("node:fs/promises");
+  await mk(loophausDir, { recursive: true });
+
+  let isFirstRun = false;
+  try {
+    const seen = await rf(welcomePath, "utf-8");
+    // Existing install — show What's New if version changed
+    if (seen.trim() !== version) {
+      await wf(welcomePath, version, "utf-8");
+      try {
+        const changelog = await rf(join(__dirname, "..", "CHANGELOG.md"), "utf-8");
+        const firstEntry = changelog.match(/## \[[\d.]+\][^\n]*\n([\s\S]*?)(?=\n## \[|$)/);
+        if (firstEntry) {
+          console.log(`\n  \x1b[36mWhat's New in v${version}:\x1b[0m`);
+          const lines = firstEntry[1].trim().split("\n").slice(0, 8);
+          for (const l of lines) console.log(`  ${l}`);
+        }
+      } catch { /* no CHANGELOG */ }
+    }
+  } catch {
+    isFirstRun = true;
+    await wf(welcomePath, version, "utf-8");
+  }
+
+  if (isFirstRun) {
+    console.log(`
+  \x1b[36m\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\x1b[0m
+  Welcome to \x1b[1mloophaus\x1b[0m v${version}
+
+  Control plane for coding agents.
+  Iterative dev loops with quality verification.
+
+  Quick start:
+    /loop-plan <describe your task>
+
+  Commands:
+    /loop-plan   Interview → PRD → implement → verify
+    /loop        Start loop with existing PRD
+    /loop-pulse  Check progress
+    /loop-stop   Cancel loop
+
+  CLI:
+    loophaus benchmark    Project quality score
+    loophaus config list  View settings
+    loophaus upgrade      Update to latest
+  \x1b[36m\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\x1b[0m`);
   }
 }
 
