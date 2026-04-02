@@ -1,13 +1,13 @@
 {
   "name": "@graypark/loophaus",
-  "version": "3.8.0",
+  "version": "3.8.1",
   "type": "module",
   "description": "loophaus — Control plane for coding agents. Iterative dev loops with multi-agent orchestration.",
   "license": "MIT",
   "author": "graypark",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vcz-Gray/loophaus"
+    "url": "git+https://github.com/vcz-Gray/loophaus.git"
   },
   "homepage": "https://github.com/vcz-Gray/loophaus#readme",
   "bugs": {
@@ -17,7 +17,7 @@
     "access": "public"
   },
   "bin": {
-    "loophaus": "./dist/bin/loophaus.js"
+    "loophaus": "dist/bin/loophaus.js"
   },
   "files": [
     "dist/",
