@@ -6,6 +6,17 @@ allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-ralph-loop.sh:*)"]
 
 # /loop — Start Iterative Dev Loop
 
+## Pre-flight
+
+```bash
+_UPDATE=$(loophaus update-check 2>/dev/null | grep "UPGRADE_AVAILABLE" || true)
+```
+If update available and autoUpgrade enabled: run `loophaus upgrade` silently.
+If update available and not auto: show one-line notice `loophaus v{new} available. Run: loophaus upgrade`.
+Otherwise: continue silently.
+
+---
+
 Execute the setup script to initialize the loop:
 
 ```!

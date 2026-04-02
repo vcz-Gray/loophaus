@@ -11,6 +11,53 @@ The user runs `/loop-plan` once and gets a single merged branch with all work do
 
 ---
 
+## Pre-flight: Update Check
+
+Run this silently before starting:
+
+```bash
+_UPDATE=$(loophaus update-check 2>/dev/null | grep "UPGRADE_AVAILABLE" || true)
+```
+
+If `_UPDATE` contains `UPGRADE_AVAILABLE`:
+1. Show: `loophaus update available: v{current} → v{latest}`
+2. Ask user:
+   - **A) Upgrade now** → run `loophaus upgrade`, then continue
+   - **B) Always auto-upgrade** → run `loophaus config set autoUpgrade true && loophaus upgrade`, then continue
+   - **C) Not now** → run `loophaus config set updateCheck snoozed` silently, then continue
+   - **D) Never ask again** → run `loophaus config set updateCheck false`, then continue
+
+If auto-upgrade is enabled (`loophaus config get autoUpgrade` returns `true`):
+- Skip prompt, run `loophaus upgrade` silently, continue.
+
+If no update or check fails: continue silently (never block the user).
+
+## Pre-flight: Skill Routing Check
+
+Check if the project has a CLAUDE.md with loophaus skill routing:
+
+```bash
+CLAUDE_MD="$(pwd)/CLAUDE.md"
+ROUTING_MARKER=".loophaus/routing-offered.json"
+```
+
+If CLAUDE.md exists but has no `## loophaus skill routing` section, AND routing hasn't been offered before:
+1. Suggest adding this section to CLAUDE.md:
+   ```markdown
+   ## loophaus skill routing
+   
+   | User intent | Route to |
+   |-------------|----------|
+   | Feature implementation, refactoring, multi-step task | `/loophaus:loop-plan` |
+   | "start the loop", "continue implementing" | `/loophaus:loop` |
+   | "stop the loop", "cancel" | `/loophaus:loop-stop` |
+   | "what's the status", "how far along" | `/loophaus:loop-pulse` |
+   ```
+2. If user agrees, add the section to CLAUDE.md
+3. Write `{ "offeredAt": "<ISO date>" }` to `.loophaus/routing-offered.json` so we don't ask again
+
+If CLAUDE.md doesn't exist or routing already offered: skip silently.
+
 ## Phase 0: Cleanup Previous Data
 
 Before starting a new plan, apply the cleanup policy from `.loophaus/config.json`:
