@@ -27,7 +27,8 @@ const KNOWN_FLAGS = new Set([
 const VALID_COMMANDS = [
   "install", "uninstall", "status", "stats", "loops", "watch",
   "replay", "compare", "worktree", "parallel", "quality",
-  "sessions", "resume", "benchmark", "clean", "help",
+  "sessions", "resume", "benchmark", "clean", "config",
+  "update-check", "upgrade", "help",
 ];
 
 function validateFlags(): void {
@@ -127,6 +128,9 @@ Usage:
   npx @graypark/loophaus quality [--story US-001]
   npx @graypark/loophaus benchmark
   npx @graypark/loophaus clean [--all|--traces|--sessions|--results] [--before DATE]
+  npx @graypark/loophaus config [list|get|set] [key] [value]
+  npx @graypark/loophaus update-check
+  npx @graypark/loophaus upgrade
   npx @graypark/loophaus sessions
   npx @graypark/loophaus resume <session-id>
   npx @graypark/loophaus --version
@@ -332,7 +336,7 @@ async function runWatch(): Promise<void> {
 
   function printEvent(line: string): void {
     try {
-      const e = JSON.parse(line) as Record<string, unknown>;
+      const e = JSON.parse(line) as unknown as Record<string, unknown>;
       const color = COLORS[e.event as string] || "";
       const time = e.ts ? new Date(e.ts as string).toLocaleTimeString() : "";
       const detail = e.iteration ? ` iter=${e.iteration}` : e.reason ? ` reason=${e.reason}` : "";
@@ -508,7 +512,7 @@ async function runSessions(): Promise<void> {
   console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
   for (const s of sessions) {
     const age = Math.round((Date.now() - new Date(s.savedAt).getTime()) / 60000);
-    console.log(`  ${(s as Record<string, unknown>).sessionId}  iter=${(s as Record<string, unknown>).currentIteration || 0}  ${age}m ago`);
+    console.log(`  ${(s as unknown as Record<string, unknown>).sessionId}  iter=${(s as unknown as Record<string, unknown>).currentIteration || 0}  ${age}m ago`);
   }
 }
 
@@ -546,7 +550,7 @@ async function runQuality(): Promise<void> {
     const { evaluateStory } = await import("../core/quality-scorer.js");
     const { read } = await import("../store/state-store.js");
     const state = await read(cwd);
-    const config: Record<string, unknown> = (state.qualityConfig as Record<string, unknown>) || {};
+    const config: Record<string, unknown> = (state.qualityConfig as unknown as Record<string, unknown>) || {};
 
     if (!config.typecheckCommand) {
       try { await access(join(cwd, "tsconfig.json")); config.typecheckCommand = "npx tsc --noEmit"; } catch { /* no tsconfig */ }
@@ -695,6 +699,147 @@ Options:
   }
 }
 
+async function runUpdateCheck(): Promise<void> {
+  const { getPackageVersion } = await import("../lib/paths.js");
+  const { checkForUpdate } = await import("../core/update-checker.js");
+  const current = getPackageVersion();
+  const result = await checkForUpdate(current);
+
+  console.log("Update Check");
+  console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+  console.log(`  Current:  v${result.current}`);
+  console.log(`  Latest:   v${result.latest}`);
+  console.log(`  Status:   ${result.status}`);
+  if (result.message) console.log(`  Note:     ${result.message}`);
+
+  if (result.status === "upgrade_available") {
+    console.log(`\n  \x1b[33mUpdate available: v${result.current} → v${result.latest}\x1b[0m`);
+    console.log(`  Run: loophaus upgrade`);
+  }
+}
+
+async function runUpgrade(): Promise<void> {
+  const { getPackageVersion } = await import("../lib/paths.js");
+  const { checkForUpdate } = await import("../core/update-checker.js");
+  const { execFile: ef } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const execFileAsync = promisify(ef);
+
+  const current = getPackageVersion();
+  const result = await checkForUpdate(current);
+
+  if (result.status === "up_to_date") {
+    console.log(`Already on latest version: v${current}`);
+    return;
+  }
+
+  if (result.status !== "upgrade_available" && result.status !== "snoozed") {
+    console.log(`No update available (status: ${result.status})`);
+    return;
+  }
+
+  console.log(`Upgrading loophaus: v${result.current} → v${result.latest}`);
+  const s = spinner("Installing...");
+  try {
+    await execFileAsync("npm", ["install", "-g", `@graypark/loophaus@${result.latest}`], { timeout: 120_000 });
+    s.stop();
+    console.log(`\u2714 Installed v${result.latest}`);
+
+    const s2 = spinner("Reinstalling plugins...");
+    try {
+      await execFileAsync("loophaus", ["install", "--force"], { timeout: 60_000 });
+      s2.stop();
+      console.log("\u2714 Plugins reinstalled");
+    } catch {
+      s2.stop();
+      console.log("  Note: Run 'loophaus install --force' to update plugins.");
+    }
+
+    console.log(`\n  Upgrade complete: v${result.current} → v${result.latest}`);
+  } catch (err) {
+    s.stop();
+    console.error(`\u2718 Upgrade failed: ${(err as Error).message}`);
+    console.error("  Try manually: npm install -g @graypark/loophaus@latest");
+  }
+}
+
+async function runConfigCmd(): Promise<void> {
+  const { readConfig, writeConfig } = await import("../core/cleanup.js");
+  const sub = args[1];
+
+  const KNOWN_KEYS: Record<string, string> = {
+    "cleanup.onNewPlan": "Policy when /loop-plan starts: archive | delete | keep",
+    "cleanup.traceRetentionDays": "Days to keep trace data",
+    "cleanup.sessionRetentionDays": "Days to keep session checkpoints",
+    "updateCheck": "Check for updates on skill execution: true | false",
+    "autoUpgrade": "Auto-upgrade without prompting: true | false",
+  };
+
+  if (!sub || sub === "list") {
+    const config = await readConfig() as unknown as Record<string, unknown>;
+    console.log("Configuration (.loophaus/config.json)");
+    console.log("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n");
+    for (const [key, desc] of Object.entries(KNOWN_KEYS)) {
+      const val = getNestedValue(config, key);
+      console.log(`  ${key.padEnd(30)} ${String(val ?? "(default)").padEnd(12)} ${desc}`);
+    }
+    console.log(`\nUsage: loophaus config set <key> <value>`);
+    return;
+  }
+
+  if (sub === "get") {
+    const key = args[2];
+    if (!key) { console.log("Usage: loophaus config get <key>"); return; }
+    const config = await readConfig() as unknown as Record<string, unknown>;
+    const val = getNestedValue(config, key);
+    console.log(val !== undefined ? String(val) : "(not set)");
+    return;
+  }
+
+  if (sub === "set") {
+    const key = args[3] ? args[2] : args[2];
+    const value = args[3] || args[3];
+    if (!key || value === undefined) { console.log("Usage: loophaus config set <key> <value>"); return; }
+    const rawValue = args[3];
+    if (!key || rawValue === undefined) { console.log("Usage: loophaus config set <key> <value>"); return; }
+
+    if (!KNOWN_KEYS[key]) {
+      console.log(`Warning: '${key}' is not a known config key.`);
+    }
+
+    const config = await readConfig();
+    const parsed = rawValue === "true" ? true : rawValue === "false" ? false : isNaN(Number(rawValue)) ? rawValue : Number(rawValue);
+    setNestedValue(config as unknown as Record<string, unknown>, key, parsed);
+    await writeConfig(config);
+    console.log(`Set ${key} = ${String(parsed)}`);
+    return;
+  }
+
+  console.log("Usage: loophaus config [list|get|set] [key] [value]");
+}
+
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  const parts = path.split(".");
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current == null || typeof current !== "object") return undefined;
+    current = (current as unknown as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
+  const parts = path.split(".");
+  let current = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (!(parts[i] in current) || typeof current[parts[i]] !== "object") {
+      current[parts[i]] = {};
+    }
+    current = current[parts[i]] as unknown as Record<string, unknown>;
+  }
+  current[parts[parts.length - 1]] = value;
+}
+
 try {
   switch (command) {
     case "install": await runInstall(); break;
@@ -710,6 +855,9 @@ try {
     case "quality": await runQuality(); break;
     case "benchmark": await runBenchmarkCmd(); break;
     case "clean": await runCleanCmd(); break;
+    case "config": await runConfigCmd(); break;
+    case "update-check": await runUpdateCheck(); break;
+    case "upgrade": await runUpgrade(); break;
     case "sessions": await runSessions(); break;
     case "resume": await runResume(); break;
     default:
