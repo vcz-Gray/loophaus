@@ -185,7 +185,7 @@ export async function install({ dryRun = false, force = false, local = false } =
 
   // Step 2: Copy files
   console.log(`[2/${totalSteps}] Copying plugin files...`);
-  for (const dir of ["hooks", "codex/commands", "lib", "core", "store"]) {
+  for (const dir of ["hooks", "codex/commands", "scripts", "lib", "core", "store"]) {
     const src = join(PROJECT_ROOT, dir);
     if (!(await fileExists(src))) continue;
     const destDir = dir === "codex/commands" ? "commands" : dir;

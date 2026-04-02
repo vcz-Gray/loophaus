@@ -13,13 +13,9 @@ The user runs `/loop-plan` once and gets a single merged branch with all work do
 
 ## Pre-flight: Update Check
 
-Run this silently before starting:
+Run `loophaus update-check` silently before starting.
 
-```bash
-_UPDATE=$(loophaus update-check 2>/dev/null | grep "UPGRADE_AVAILABLE" || true)
-```
-
-If `_UPDATE` contains `UPGRADE_AVAILABLE`:
+If the command reports an available update:
 1. Show: `loophaus update available: v{current} → v{latest}`
 2. Ask user:
    - **A) Upgrade now** → run `loophaus upgrade`, then continue
@@ -30,7 +26,7 @@ If `_UPDATE` contains `UPGRADE_AVAILABLE`:
 If auto-upgrade is enabled (`loophaus config get autoUpgrade` returns `true`):
 - Skip prompt, run `loophaus upgrade` silently, continue.
 
-If no update or check fails: continue silently (never block the user).
+If no update is available or the check fails: continue silently and never block the user.
 
 ## Pre-flight: Skill Routing Check
 

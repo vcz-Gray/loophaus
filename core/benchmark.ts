@@ -1,12 +1,11 @@
 // core/benchmark.ts
 // Project-level quality measurement (autoresearch pattern: val_bpb → project score)
 
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { readFile, appendFile, mkdir, stat } from "node:fs/promises";
+import { readFile, appendFile, mkdir, readdir, stat } from "node:fs/promises";
 import { join, dirname } from "node:path";
 
-const execFileAsync = promisify(execFile);
+import type { CommandError } from "../lib/runtime.js";
+import { runCommand } from "../lib/runtime.js";
 
 export interface BenchmarkMetrics {
   testsPassed: number;
@@ -39,6 +38,24 @@ export interface BenchmarkEntry {
   buildSuccess: boolean;
   coveragePct: number;
   pkgSizeKb: number;
+}
+
+async function getDirectorySizeBytes(dir: string): Promise<number> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  let total = 0;
+
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      total += await getDirectorySizeBytes(fullPath);
+      continue;
+    }
+    if (entry.isFile()) {
+      total += (await stat(fullPath)).size;
+    }
+  }
+
+  return total;
 }
 
 export function scoreBenchmark(metrics: BenchmarkMetrics): BenchmarkResult {
@@ -98,7 +115,7 @@ export async function runBenchmark(cwd?: string): Promise<BenchmarkResult> {
   // 1. Tests
   const testStart = Date.now();
   try {
-    const { stdout } = await execFileAsync("npx", ["vitest", "run", "--reporter=json"], { cwd: dir, timeout: 120_000 });
+    const { stdout } = await runCommand("npx", ["vitest", "run", "--reporter=json"], { cwd: dir, timeout: 120_000 });
     metrics.testTimeMs = Date.now() - testStart;
     try {
       const json = JSON.parse(stdout);
@@ -115,7 +132,7 @@ export async function runBenchmark(cwd?: string): Promise<BenchmarkResult> {
     }
   } catch (err) {
     metrics.testTimeMs = Date.now() - testStart;
-    const output = (err as { stdout?: string }).stdout || "";
+    const output = (err as CommandError).stdout || (err as CommandError).stderr || "";
     const passMatch = output.match(/(\d+) passed/);
     if (passMatch) metrics.testsPassed = parseInt(passMatch[1]);
     const failMatch = output.match(/(\d+) failed/);
@@ -125,17 +142,17 @@ export async function runBenchmark(cwd?: string): Promise<BenchmarkResult> {
 
   // 2. Typecheck
   try {
-    await execFileAsync("npx", ["tsc", "--noEmit"], { cwd: dir, timeout: 60_000 });
+    await runCommand("npx", ["tsc", "--noEmit"], { cwd: dir, timeout: 60_000 });
     metrics.typecheckErrors = 0;
   } catch (err) {
-    const output = (err as { stdout?: string }).stdout || (err as { stderr?: string }).stderr || "";
+    const output = (err as CommandError).stdout || (err as CommandError).stderr || "";
     const errorCount = (output.match(/error TS/g) || []).length;
     metrics.typecheckErrors = errorCount || 1;
   }
 
   // 3. Build
   try {
-    await execFileAsync("npm", ["run", "build"], { cwd: dir, timeout: 60_000 });
+    await runCommand("npm", ["run", "build"], { cwd: dir, timeout: 60_000 });
     metrics.buildSuccess = true;
   } catch {
     metrics.buildSuccess = false;
@@ -150,7 +167,7 @@ export async function runBenchmark(cwd?: string): Promise<BenchmarkResult> {
   } catch {
     // Run coverage if summary doesn't exist
     try {
-      await execFileAsync("npx", ["vitest", "run", "--coverage"], { cwd: dir, timeout: 120_000 });
+      await runCommand("npx", ["vitest", "run", "--coverage"], { cwd: dir, timeout: 120_000 });
       const summaryPath = join(dir, "coverage", "coverage-summary.json");
       const raw = await readFile(summaryPath, "utf-8");
       const summary = JSON.parse(raw) as { total?: { lines?: { pct?: number } } };
@@ -165,9 +182,7 @@ export async function runBenchmark(cwd?: string): Promise<BenchmarkResult> {
     const distDir = join(dir, "dist");
     const s = await stat(distDir);
     if (s.isDirectory()) {
-      const { stdout } = await execFileAsync("du", ["-sk", distDir], { timeout: 10_000 });
-      const match = stdout.match(/^(\d+)/);
-      metrics.pkgSizeKb = match ? parseInt(match[1]) : 0;
+      metrics.pkgSizeKb = Math.ceil((await getDirectorySizeBytes(distDir)) / 1024);
     }
   } catch {
     metrics.pkgSizeKb = 0;
@@ -188,7 +203,7 @@ export async function logBenchmark(result: BenchmarkResult, cwd?: string): Promi
 
   let commitHash = "unknown";
   try {
-    const { stdout } = await execFileAsync("git", ["rev-parse", "--short", "HEAD"], { timeout: 5_000 });
+    const { stdout } = await runCommand("git", ["rev-parse", "--short", "HEAD"], { timeout: 5_000 });
     commitHash = stdout.trim();
   } catch { /* not in git */ }
 
@@ -229,7 +244,7 @@ export async function readBenchmarkHistory(cwd?: string): Promise<BenchmarkEntry
   const benchPath = getBenchmarkPath(cwd);
   try {
     const raw = await readFile(benchPath, "utf-8");
-    const lines = raw.trim().split("\n").slice(1); // skip header
+    const lines = raw.trim().split(/\r?\n/).slice(1); // skip header
     return lines.map(line => {
       const cols = line.split("\t");
       return {

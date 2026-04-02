@@ -4,7 +4,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdir, access } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 import type { WorktreeInfo } from "./types.js";
 
@@ -79,7 +79,7 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
     const entries: Array<{ path?: string; head?: string; branch?: string; bare?: boolean }> = [];
     let current: { path?: string; head?: string; branch?: string; bare?: boolean } = {};
 
-    for (const line of stdout.split("\n")) {
+    for (const line of stdout.split(/\r?\n/)) {
       if (line.startsWith("worktree ")) {
         if (current.path) entries.push(current);
         current = { path: line.slice(9) };
@@ -97,7 +97,7 @@ export async function listWorktrees(): Promise<WorktreeInfo[]> {
 
     const loophausDir = join(root, ".loophaus", "worktrees");
     return entries.filter(e => e.path && e.path.startsWith(loophausDir)).map(e => ({
-      name: e.path!.split("/").pop()!,
+      name: basename(e.path!),
       path: e.path!,
       branch: e.branch || "",
       head: e.head || "",

@@ -5,6 +5,8 @@ import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { access } from "node:fs/promises";
 import type { LoopEvent } from "../core/types.js";
+import { getLoophausHome } from "../lib/paths.js";
+import { getGlobalBinaryPath, runCommand } from "../lib/runtime.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -177,7 +179,7 @@ async function runInstall(): Promise<void> {
   const { getPackageVersion } = await import("../lib/paths.js");
   const version = getPackageVersion();
   const quiet = args.includes("--quiet");
-  const loophausDir = join(process.env.HOME || "~", ".loophaus");
+  const loophausDir = getLoophausHome();
   const welcomePath = join(loophausDir, ".welcome-seen");
 
   let targets: string[] = [];
@@ -778,9 +780,6 @@ async function runUpdateCheck(): Promise<void> {
 async function runUpgrade(): Promise<void> {
   const { getPackageVersion } = await import("../lib/paths.js");
   const { checkForUpdate } = await import("../core/update-checker.js");
-  const { execFile: ef } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(ef);
 
   const current = getPackageVersion();
   const result = await checkForUpdate(current);
@@ -798,13 +797,15 @@ async function runUpgrade(): Promise<void> {
   console.log(`Upgrading loophaus: v${result.current} → v${result.latest}`);
   const s = spinner("Installing...");
   try {
-    await execFileAsync("npm", ["install", "-g", `@graypark/loophaus@${result.latest}`], { timeout: 120_000 });
+    await runCommand("npm", ["install", "-g", `@graypark/loophaus@${result.latest}`], { timeout: 120_000 });
     s.stop();
     console.log(`\u2714 Installed v${result.latest}`);
 
     const s2 = spinner("Reinstalling plugins...");
     try {
-      await execFileAsync("loophaus", ["install", "--force"], { timeout: 60_000 });
+      const { stdout: prefixStdout } = await runCommand("npm", ["prefix", "-g"], { timeout: 30_000 });
+      const globalLoophaus = getGlobalBinaryPath(prefixStdout.trim(), "loophaus");
+      await runCommand(globalLoophaus, ["install", "--force"], { timeout: 60_000 });
       s2.stop();
       console.log("\u2714 Plugins reinstalled");
     } catch {

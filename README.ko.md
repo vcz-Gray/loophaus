@@ -153,10 +153,12 @@ loophaus는 세 개의 주요 코딩 에이전트 플랫폼을 지원합니다:
 | 기능 | Claude Code | Codex CLI | Kiro CLI |
 | --- | --- | --- | --- |
 | 자동 감지 설치 | `~/.claude/` | `~/.codex/` | `~/.kiro/` |
-| Stop hook | bash 기반 | Node.js 기반 | bash 기반 |
+| Stop hook | Node.js 기반 | Node.js 기반 | Node.js 기반 |
 | 루프 실행 | Skill tool | 네이티브 커맨드 | 네이티브 커맨드 |
 | 멀티 에이전트 | Agent tool | 서브에이전트 | 서브에이전트 |
 | 상태 파일 | `.loophaus/state.json` | `.loophaus/state.json` | `.loophaus/state.json` |
+
+Windows에서도 PowerShell/CMD 기준으로 `install`, `upgrade`, `/loop` 초기화가 동작합니다. Git Bash나 WSL은 선택사항입니다.
 
 ## 설치
 
@@ -166,6 +168,8 @@ loophaus는 세 개의 주요 코딩 에이전트 플랫폼을 지원합니다:
 npm install -g @graypark/loophaus
 loophaus install
 ```
+
+Windows에서는 전역 npm 실행 파일 경로(보통 `%AppData%\npm`)가 `PATH`에 포함되어 있어야 합니다.
 
 ### npx로 설치
 
@@ -367,6 +371,12 @@ Phase 2 — 순차 수정 (루프):
 ## 업데이트
 
 ```bash
+loophaus upgrade
+```
+
+수동 업데이트가 필요하면:
+
+```bash
 npm install -g @graypark/loophaus@latest
 loophaus install --force
 ```
@@ -381,7 +391,7 @@ npm uninstall -g @graypark/loophaus
 ## 개발
 
 ```bash
-npm install && npm test    # 296개 테스트
+npm install && npm test
 npm run typecheck          # TypeScript strict 모드
 npm run build              # dist/로 컴파일
 npx vitest                # watch 모드

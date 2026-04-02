@@ -6,6 +6,7 @@ import {
   getHooksJsonPath,
   getPluginInstallDir,
   getSkillsDir,
+  getLoophausHome,
   getAgentsHome,
   getAgentsSkillsDir,
   isWindows,
@@ -44,6 +45,10 @@ describe("paths.mjs", () => {
     originalCodexHome = process.env.CODEX_HOME;
     process.env.CODEX_HOME = "/custom/codex/path";
     expect(getCodexHome()).toBe("/custom/codex/path");
+  });
+
+  it("getLoophausHome uses provided home dir", () => {
+    expect(getLoophausHome("/custom/home")).toMatch(/custom[/\\]home[/\\]\.loophaus$/);
   });
 
   it("getHooksJsonPath ends with hooks.json", () => {

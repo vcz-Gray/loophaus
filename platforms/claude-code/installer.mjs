@@ -71,6 +71,8 @@ export async function install({ dryRun = false, force = false } = {}) {
   if (!dryRun) {
     const sh = join(cacheDir, "scripts", "setup-ralph-loop.sh");
     if (await fileExists(sh)) await chmod(sh, 0o755);
+    const nodeScript = join(cacheDir, "scripts", "setup-loop.mjs");
+    if (await fileExists(nodeScript)) await chmod(nodeScript, 0o755);
   }
 
   // Step 2: Register marketplace

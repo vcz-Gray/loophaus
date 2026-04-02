@@ -78,6 +78,11 @@ describe("loophaus CLI", () => {
         join(codexHome, "plugins", "loophaus", "store", "state-store.js"),
       ),
     ).toBe(true);
+    expect(
+      await fileExists(
+        join(codexHome, "plugins", "loophaus", "scripts", "setup-loop.mjs"),
+      ),
+    ).toBe(true);
     expect(await fileExists(join(codexHome, "hooks.json"))).toBe(true);
     const hooksJson = JSON.parse(
       await readFile(join(codexHome, "hooks.json"), "utf-8"),

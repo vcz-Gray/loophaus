@@ -1,12 +1,11 @@
 // core/quality-scorer.ts
 // Quality scoring for story implementations (autoresearch pattern: val_bpb -> quality score)
 
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-const execFileAsync = promisify(execFile);
+import type { CommandError } from "../lib/runtime.js";
+import { runCommand, runShellCommand } from "../lib/runtime.js";
 
 interface CriterionConfig {
   weight: number;
@@ -65,10 +64,11 @@ interface EvaluationResult extends ScoreResult {
 
 export async function evaluateStory(storyId: string, cwd: string, config: EvaluateConfig = {}): Promise<EvaluationResult> {
   const results: Record<string, number> = {};
+  const splitLines = (value: string): string[] => value.split(/\r?\n/);
 
   if (config.testCommand) {
     try {
-      await execFileAsync("sh", ["-c", config.testCommand], { cwd, timeout: 120_000 });
+      await runShellCommand(config.testCommand, { cwd, timeout: 120_000 });
       results.tests = 10;
     } catch {
       results.tests = 0;
@@ -77,27 +77,29 @@ export async function evaluateStory(storyId: string, cwd: string, config: Evalua
 
   if (config.typecheckCommand) {
     try {
-      await execFileAsync("sh", ["-c", config.typecheckCommand], { cwd, timeout: 60_000 });
+      await runShellCommand(config.typecheckCommand, { cwd, timeout: 60_000 });
       results.typecheck = 10;
     } catch (err) {
-      const errorCount = ((err as { stdout?: string }).stdout || "").split("\n").filter(l => l.includes("error")).length;
+      const output = (err as CommandError).stdout || (err as CommandError).stderr || "";
+      const errorCount = splitLines(output).filter(line => line.includes("error")).length;
       results.typecheck = Math.max(0, 10 - errorCount);
     }
   }
 
   if (config.lintCommand) {
     try {
-      await execFileAsync("sh", ["-c", config.lintCommand], { cwd, timeout: 60_000 });
+      await runShellCommand(config.lintCommand, { cwd, timeout: 60_000 });
       results.lint = 10;
     } catch (err) {
-      const warnings = ((err as { stdout?: string }).stdout || "").split("\n").filter(l => l.includes("warning") || l.includes("error")).length;
+      const output = (err as CommandError).stdout || (err as CommandError).stderr || "";
+      const warnings = splitLines(output).filter(line => line.includes("warning") || line.includes("error")).length;
       results.lint = Math.max(0, 10 - warnings);
     }
   }
 
   if (config.verifyScript) {
     try {
-      await execFileAsync("sh", ["-c", config.verifyScript], { cwd, timeout: 60_000 });
+      await runShellCommand(config.verifyScript, { cwd, timeout: 60_000 });
       results.verify = 10;
     } catch {
       results.verify = 0;
@@ -105,8 +107,8 @@ export async function evaluateStory(storyId: string, cwd: string, config: Evalua
   }
 
   try {
-    const { stdout } = await execFileAsync("git", ["diff", "--stat", "HEAD~1"], { cwd, timeout: 10_000 });
-    const lines = stdout.trim().split("\n");
+    const { stdout } = await runCommand("git", ["diff", "--stat", "HEAD~1"], { cwd, timeout: 10_000 });
+    const lines = stdout.trim().split(/\r?\n/);
     const lastLine = lines[lines.length - 1] || "";
     const match = lastLine.match(/(\d+) insertion.+?(\d+) deletion/);
     if (match) {
@@ -169,7 +171,7 @@ export async function readResults(cwd?: string): Promise<ResultEntry[]> {
   const tsvPath = join(cwd || process.cwd(), ".loophaus", "results.tsv");
   try {
     const raw = await readFile(tsvPath, "utf-8");
-    const lines = raw.trim().split("\n").slice(1);
+    const lines = raw.trim().split(/\r?\n/).slice(1);
     return lines.map(line => {
       const [storyId, attempt, score, status, description, commit] = line.split("\t");
       return { storyId, attempt: parseInt(attempt), score: parseInt(score), status, description, commit };

@@ -24,6 +24,10 @@ export function isWindows(): boolean {
   return process.platform === "win32";
 }
 
+export function getLoophausHome(homeDir?: string): string {
+  return join(homeDir || homedir(), ".loophaus");
+}
+
 // --- Codex CLI paths (legacy ~/.codex + new ~/.agents) ---
 
 export function getCodexHome(): string {

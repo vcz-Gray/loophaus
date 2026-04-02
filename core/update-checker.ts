@@ -2,8 +2,10 @@
 // npm registry version check with cache + snooze (gstack-style)
 
 import { readFile, writeFile, mkdir, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { get } from "node:https";
+
+import { getLoophausHome } from "../lib/paths.js";
 
 const REGISTRY_URL = "https://registry.npmjs.org/@graypark/loophaus/latest";
 const FETCH_TIMEOUT_MS = 5_000;
@@ -43,7 +45,7 @@ export interface UpdateConfig {
 }
 
 function getLoophausDir(cwd?: string): string {
-  return join(cwd || process.env.HOME || "~", ".loophaus");
+  return getLoophausHome(cwd);
 }
 
 function getCachePath(cwd?: string): string {
@@ -98,7 +100,7 @@ async function readJson<T>(path: string): Promise<T | null> {
 }
 
 async function writeJson(path: string, data: unknown): Promise<void> {
-  await mkdir(join(path, ".."), { recursive: true });
+  await mkdir(dirname(path), { recursive: true });
   await writeFile(path, JSON.stringify(data, null, 2), "utf-8");
 }
 

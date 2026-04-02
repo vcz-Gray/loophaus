@@ -119,6 +119,8 @@ That's it. The interview generates a PRD, activates the loop, and starts impleme
 
 All three platforms share the same core engine (`core/engine.ts`) and state store (`store/state-store.ts`). Platform-specific adapters handle the differences.
 
+Native Windows is supported for install, upgrade, and `/loop` initialization via PowerShell or CMD. Git Bash and WSL are optional, not required.
+
 ## Installation
 
 ### Global install (recommended)
@@ -127,6 +129,8 @@ All three platforms share the same core engine (`core/engine.ts`) and state stor
 npm install -g @graypark/loophaus
 loophaus install
 ```
+
+On Windows, ensure your global npm bin directory (typically `%AppData%\npm`) is on `PATH`.
 
 ### Via npx
 
@@ -284,6 +288,12 @@ Each story is sized to complete in one iteration (one context window). Dependenc
 ## Update
 
 ```bash
+loophaus upgrade
+```
+
+Manual upgrade also works:
+
+```bash
 npm install -g @graypark/loophaus@latest
 loophaus install --force
 ```
@@ -301,7 +311,7 @@ npm uninstall -g @graypark/loophaus
 git clone https://github.com/vcz-Gray/loophaus.git
 cd loophaus
 npm install
-npm test          # 296 test cases
+npm test
 npm run typecheck  # TypeScript strict mode
 npm run build      # Compile to dist/
 npx vitest        # watch mode

@@ -5,12 +5,10 @@ import { getLastAssistantText, hasPendingStories } from "../core/io-helpers.js";
 import { read as readState, write as writeState } from "../store/state-store.js";
 import { logEvents } from "../core/event-logger.js";
 import { join } from "node:path";
+import { runShellCommand } from "../lib/runtime.js";
 
 async function runStoryTests(cwd) {
   const { readFile } = await import("node:fs/promises");
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
   const prdPath = join(cwd, "prd.json");
 
   try {
@@ -21,10 +19,10 @@ async function runStoryTests(cwd) {
     for (const story of prd.userStories) {
       if (!story.testCommand || story.passes) continue;
       try {
-        await execFileAsync("sh", ["-c", story.testCommand], { cwd, timeout: 60_000 });
+        await runShellCommand(story.testCommand, { cwd, timeout: 60_000 });
         results.push({ storyId: story.id, passed: true });
       } catch (err) {
-        results.push({ storyId: story.id, passed: false, error: err.message });
+        results.push({ storyId: story.id, passed: false, error: err.stderr || err.message });
       }
     }
     return results;
@@ -55,10 +53,7 @@ async function main() {
   let verifyResult = null;
   if (state.verifyScript) {
     try {
-      const { execFile } = await import("node:child_process");
-      const { promisify } = await import("node:util");
-      const execFileAsync = promisify(execFile);
-      const { stdout: vOut } = await execFileAsync(state.verifyScript, [], { cwd, timeout: 30_000 });
+      const { stdout: vOut } = await runShellCommand(state.verifyScript, { cwd, timeout: 30_000 });
       verifyResult = { passed: true, output: vOut.trim() };
     } catch (err) {
       verifyResult = { passed: false, output: err.stderr || err.message };
