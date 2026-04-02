@@ -37,6 +37,7 @@
     "postbuild": "node -e \"const fs=require('fs');const p=require('path');['platforms','hooks','codex','commands','scripts','skills','.claude-plugin'].forEach(d=>{const s=p.join(__dirname,d);const t=p.join(__dirname,'dist',d);if(fs.existsSync(s))fs.cpSync(s,t,{recursive:true})});['package.json','LICENSE','README.md','README.ko.md'].forEach(f=>{const s=p.join(__dirname,f);const t=p.join(__dirname,'dist',f);if(fs.existsSync(s))fs.cpSync(s,t)})\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "postinstall": "echo 'Run: npx loophaus --help'",
     "prepublishOnly": "npm run build",
     "prepare": "npm run build"
@@ -55,6 +56,7 @@
   ],
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "@vitest/coverage-v8": "^4.1.2",
     "typescript": "^6.0.2",
     "vitest": "^4.1.0"
   }
