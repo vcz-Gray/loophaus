@@ -10,13 +10,17 @@
   <a href="https://github.com/vcz-Gray/loophaus/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg?style=flat-square" alt="node version" />
   <img src="https://img.shields.io/badge/platform-Claude%20Code%20%7C%20Codex%20CLI%20%7C%20Kiro%20CLI-purple.svg?style=flat-square" alt="platform" />
-  <img src="https://img.shields.io/badge/tests-359%20passing-brightgreen.svg?style=flat-square" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-367%20passing-brightgreen.svg?style=flat-square" alt="tests" />
 </p>
 
 <h3 align="center">AI 코딩 에이전트를 자율 루프로 실행 — 매 반복마다 신선한 컨텍스트, PRD 기반 진행 추적, 자동 품질 게이트.</h3>
 
 <p align="center">
   <sub><a href="https://ghuntley.com/ralph/">Geoffrey Huntley의 Ralph Wiggum 기법</a> 기반</sub>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vcz-Gray/loophaus/main/assets/demo-video/demo.gif" alt="loophaus 데모" width="700" />
 </p>
 
 ---

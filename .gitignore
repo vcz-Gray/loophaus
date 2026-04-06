@@ -5,3 +5,4 @@ coverage/
 .codex/ralph-loop.state.json
 *.log
 .DS_Store
+assets/demo-video/node_modules/
