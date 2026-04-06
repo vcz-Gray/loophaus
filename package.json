@@ -1,6 +1,6 @@
 {
   "name": "@graypark/loophaus",
-  "version": "3.9.0",
+  "version": "3.9.1",
   "type": "module",
   "description": "Autonomous dev loops for AI coding agents — fresh context each iteration, PRD-tracked progress, automatic quality gates.",
   "license": "MIT",
