@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Security audit
+        run: npm audit --audit-level=moderate || true
+
       - name: Typecheck
         run: npm run typecheck
 

@@ -2,7 +2,7 @@
   "name": "@graypark/loophaus",
   "version": "3.8.1",
   "type": "module",
-  "description": "loophaus — Control plane for coding agents. Iterative dev loops with multi-agent orchestration.",
+  "description": "Autonomous dev loops for AI coding agents — fresh context each iteration, PRD-tracked progress, automatic quality gates.",
   "license": "MIT",
   "author": "graypark",
   "repository": {
@@ -43,16 +43,23 @@
     "prepare": "npm run build"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
   },
   "keywords": [
     "loophaus",
-    "loop",
+    "autonomous",
     "ai-agent",
-    "iterative-development",
+    "coding-agents",
+    "fresh-context",
+    "prd",
+    "quality-scoring",
+    "autoresearch",
+    "claude-code",
+    "codex-cli",
+    "kiro-cli",
     "stop-hook",
-    "control-plane",
-    "coding-agents"
+    "iterative-development"
   ],
   "devDependencies": {
     "@types/node": "^25.5.0",

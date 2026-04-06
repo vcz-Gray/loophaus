@@ -10,10 +10,10 @@
   <a href="https://github.com/vcz-Gray/loophaus/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license" /></a>
   <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg?style=flat-square" alt="node version" />
   <img src="https://img.shields.io/badge/platform-Claude%20Code%20%7C%20Codex%20CLI%20%7C%20Kiro%20CLI-purple.svg?style=flat-square" alt="platform" />
-  <img src="https://img.shields.io/badge/tests-296%20passing-brightgreen.svg?style=flat-square" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-359%20passing-brightgreen.svg?style=flat-square" alt="tests" />
 </p>
 
-<h3 align="center">Control plane for coding agents — iterative dev loops across Claude Code, Codex CLI, and Kiro CLI.</h3>
+<h3 align="center">Run AI coding agents in autonomous loops — fresh context each iteration, PRD-tracked progress, automatic quality gates.</h3>
 
 <p align="center">
   <sub>Based on <a href="https://ghuntley.com/ralph/">Geoffrey Huntley's Ralph Wiggum technique</a></sub>
@@ -21,25 +21,54 @@
 
 ---
 
-## Why loophaus?
+## The Problem
 
-AI coding agents struggle with fundamental problems that get worse over long sessions:
+AI coding agents struggle with long tasks:
 
-| Problem | What happens |
-|---------|-------------|
-| **Context rot** | Long conversations accumulate noise, the agent gets confused |
-| **No checkpoints** | All-or-nothing execution — can't resume after interruption |
-| **Lost learnings** | Previous iterations' insights overwritten by new context |
-| **Completion ambiguity** | Agent says "done" but tests still fail |
-| **Platform lock-in** | Techniques that work in one agent don't transfer to others |
+- **Context rot** — agent gets confused after 10+ iterations
+- **Goal drift** — agent forgets the spec and solves the wrong problem
+- **No quality signal** — agent says "done" but tests still fail
+- **Token waste** — you re-explain the same context every time
 
-loophaus solves this:
+## The Solution
 
-- **Fresh context per iteration** — Each cycle reads PRD + progress from disk, zero degradation
-- **Git-enforced safety** — Atomic commits per story, rollback at any point
-- **Append-only learnings** — `progress.txt` accumulates knowledge across iterations
-- **Test-verified completion** — Agent can only exit when `<promise>COMPLETE</promise>` is genuinely true
+- **Fresh context per iteration** — Each cycle reads PRD + progress from disk, zero degradation even after 20+ iterations
+- **PRD-linked progress tracking** — Stories are tracked in `prd.json` with pass/fail state, not "I think I'm done"
+- **Quality scoring with keep/discard** — Autoresearch-inspired refinement loop measures quality (0-100) and reverts regressions
 - **Universal stop hook** — One Node.js hook works across Claude Code, Codex CLI, and Kiro CLI
+
+## Quick Start
+
+```bash
+npm install -g @graypark/loophaus
+loophaus install
+```
+
+> **Note:** `npx @graypark/loophaus install` may fail on some npm versions due to a bin resolution cache bug. Use the global install above for reliable setup.
+
+The installer auto-detects your host (Claude Code, Codex CLI, or Kiro CLI) and sets up everything — stop hook, commands, and skills.
+
+Then in your AI coding session:
+
+```
+/loop-plan Add user authentication with JWT, bcrypt, and login UI
+```
+
+That's it. The interview generates a PRD, activates the loop, and starts implementing story by story.
+
+## Safety
+
+- Every iteration creates a **git checkpoint** — atomic revert anytime
+- **Max iterations limit** (default 20, configurable)
+- **Quality threshold = circuit breaker** — score < 80 triggers refine or stop
+- **Cost tracking** with policy enforcement (max $5, max 30 min)
+- `loophaus clean` for data lifecycle management
+
+## Why not just script this?
+
+1. **Fresh context isolation** — no degradation after 20 iterations; each cycle starts from disk, not from a decaying conversation
+2. **PRD-linked progress tracking** — structured `prd.json` with pass/fail per story, not "I think I'm done"
+3. **Quality scoring with keep/discard** — autoresearch pattern: measure, keep improvements, revert regressions
 
 ## How it works
 
@@ -80,25 +109,6 @@ An AI agent works on a task in a continuous loop. Each iteration starts with fre
               └─────────────────────────────────┘
 ```
 
-## Quick Start
-
-```bash
-npm install -g @graypark/loophaus
-loophaus install
-```
-
-> **Note:** `npx @graypark/loophaus install` may fail on some npm versions due to a bin resolution cache bug. Use the global install above for reliable setup.
-
-The installer auto-detects your host (Claude Code, Codex CLI, or Kiro CLI) and sets up everything — stop hook, commands, and skills.
-
-Then in your AI coding session:
-
-```
-/loop-plan Add user authentication with JWT, bcrypt, and login UI
-```
-
-That's it. The interview generates a PRD, activates the loop, and starts implementing story by story.
-
 ## Commands
 
 | Command | Description |
@@ -107,6 +117,45 @@ That's it. The interview generates a PRD, activates the loop, and starts impleme
 | `/loop` | Start iterative dev loop directly (when you already have a PRD or custom prompt) |
 | `/loop-stop` | Stop the active loop immediately |
 | `/loop-pulse` | Check current loop status, iteration count, and progress |
+
+## Quality Loop (v3.4.0+)
+
+loophaus v3.4.0 introduces the **Quality Loop** — inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch)'s experiment-measure-keep/discard pattern.
+
+Instead of simply marking a story as "done" when tests pass, `/loop-plan` now **measures quality** (0-100) and **iteratively refines** until the score meets the threshold.
+
+```
+Phase 4: Implement
+     ↓
+Phase 5: Evaluate (score 0-100)
+     ↓           ↑
+Phase 6: Refine Loop
+  score improved? → keep (commit)
+  score declined? → discard (git reset)
+  max attempts reached? → move on
+     ↓
+Phase 7: Report (with quality scores)
+```
+
+| autoresearch | loophaus |
+|-------------|----------|
+| `val_bpb` | quality score (weighted: tests, typecheck, lint, verify, diff, custom) |
+| `results.tsv` | `.loophaus/results.tsv` |
+| keep → advance | score improved → commit |
+| discard → revert | score declined → `git reset --hard` |
+| NEVER STOP | max 3 attempts per story (configurable) |
+
+### Configuration
+
+```json
+{
+  "qualityThreshold": 80,
+  "maxRefineAttempts": 3,
+  "qualityConfig": {
+    "weights": { "tests": 30, "typecheck": 25, "lint": 15, "verify": 15, "diff": 10, "custom": 5 }
+  }
+}
+```
 
 ## Platform Support
 
@@ -165,53 +214,11 @@ loophaus install          # Install to detected host
 loophaus status           # Show current loop state and active host
 loophaus stats            # Iteration history and completion metrics
 loophaus quality          # Run quality scoring on current stories
+loophaus demo             # Run interactive demo
+loophaus config           # Show/edit configuration
+loophaus update-check     # Check for new versions
+loophaus upgrade          # Upgrade to latest version
 loophaus uninstall        # Clean removal from all hosts
-```
-
-## Quality Loop (v3.4.0+)
-
-loophaus v3.4.0 introduces the **Quality Loop** — inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch)'s experiment→measure→keep/discard pattern.
-
-Instead of simply marking a story as "done" when tests pass, `/loop-plan` now **measures quality** (0-100) and **iteratively refines** until the score meets the threshold.
-
-```
-Phase 4: Implement
-     ↓
-Phase 5: Evaluate (score 0-100)
-     ↓           ↑
-Phase 6: Refine Loop
-  score improved? → keep (commit)
-  score declined? → discard (git reset)
-  max attempts reached? → move on
-     ↓
-Phase 7: Report (with quality scores)
-```
-
-| autoresearch | loophaus |
-|-------------|----------|
-| `val_bpb` | quality score (weighted: tests, typecheck, lint, verify, diff, custom) |
-| `results.tsv` | `.loophaus/results.tsv` |
-| keep → advance | score improved → commit |
-| discard → revert | score declined → `git reset --hard` |
-| NEVER STOP | max 3 attempts per story (configurable) |
-
-### Configuration
-
-```json
-{
-  "qualityThreshold": 80,
-  "maxRefineAttempts": 3,
-  "qualityConfig": {
-    "weights": { "tests": 30, "typecheck": 25, "lint": 15, "verify": 15, "diff": 10, "custom": 5 }
-  }
-}
-```
-
-### CLI
-
-```bash
-loophaus quality               # Score all stories
-loophaus quality --story US-001 # Score a specific story
 ```
 
 ## Architecture
@@ -253,7 +260,7 @@ loophaus/
 ├── .claude-plugin/
 │   └── plugin.json               # Claude Code marketplace manifest
 ├── dist/                         # Compiled output (tsc)
-└── tests/                        # 296 test cases (vitest)
+└── tests/                        # 359 test cases (vitest)
 ```
 
 ## PRD Format
@@ -311,10 +318,10 @@ npm uninstall -g @graypark/loophaus
 git clone https://github.com/vcz-Gray/loophaus.git
 cd loophaus
 npm install
-npm test
-npm run typecheck  # TypeScript strict mode
-npm run build      # Compile to dist/
-npx vitest        # watch mode
+npm test               # 359 tests
+npm run typecheck      # TypeScript strict mode
+npm run build          # Compile to dist/
+npx vitest             # watch mode
 ```
 
 ## License
