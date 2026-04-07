@@ -94,6 +94,7 @@ export const TerminalChrome: React.FC<{ children: React.ReactNode }> = ({
             lineHeight: 1.6,
             color: COLORS.text,
             overflow: "hidden",
+            position: "relative",
           }}
         >
           {children}
