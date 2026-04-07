@@ -2,68 +2,57 @@ import React from "react";
 import { TerminalBlock, TerminalLineConfig } from "../components/TerminalLine";
 import { COLORS } from "../theme";
 
-// Scene 1: npm install and loophaus install (0-150 frames, ~5s)
+// Scene 1: Setup — show the one-time install, then entering Claude Code (0-150 frames, ~5s)
 export const SceneInstall: React.FC = () => {
   const lines: TerminalLineConfig[] = [
-    // $ npm install -g @graypark/loophaus
     {
       appearAt: 0,
       typed: true,
       charSpeed: 1,
       segments: [
         { text: "$ ", color: COLORS.prompt },
-        { text: "npm install -g @graypark/loophaus", color: COLORS.command },
+        { text: "npm install -g @graypark/loophaus && loophaus install", color: COLORS.command },
       ],
     },
-    // output: added 1 package
-    {
-      appearAt: 40,
-      segments: [{ text: "added 1 package in 1.2s", color: COLORS.dimText }],
-    },
-    // blank line
     {
       appearAt: 50,
-      segments: [{ text: "" }],
+      segments: [
+        { text: "✔ ", color: COLORS.accent, bold: true },
+        { text: "loophaus installed for Claude Code!", color: COLORS.text },
+      ],
     },
-    // $ loophaus install
+    { appearAt: 65, segments: [{ text: "" }] },
     {
-      appearAt: 55,
+      appearAt: 70,
       typed: true,
       charSpeed: 2,
       segments: [
         { text: "$ ", color: COLORS.prompt },
-        { text: "loophaus install", color: COLORS.command },
+        { text: "claude", color: COLORS.command },
       ],
     },
-    // Detected hosts
-    {
-      appearAt: 90,
-      segments: [
-        { text: "Detected hosts: ", color: COLORS.text },
-        { text: "claude-code", color: COLORS.highlight, bold: true },
-      ],
-    },
-    // blank line
+    { appearAt: 95, segments: [{ text: "" }] },
     {
       appearAt: 100,
-      segments: [{ text: "" }],
+      segments: [
+        { text: "╭─ ", color: COLORS.separator },
+        { text: "Claude Code", color: COLORS.highlight, bold: true },
+        { text: " ─────────────────────────────────╮", color: COLORS.separator },
+      ],
     },
-    // checkmark line
     {
       appearAt: 110,
       segments: [
-        { text: "\u2714 ", color: COLORS.accent, bold: true },
-        { text: "loophaus installed for Claude Code!", color: COLORS.text },
+        { text: "│ ", color: COLORS.separator },
+        { text: "loophaus v3.9 active", color: COLORS.dimText },
+        { text: "  /loop-plan /loop /loop-pulse", color: COLORS.accent },
+        { text: " │", color: COLORS.separator },
       ],
     },
-    // hint
     {
-      appearAt: 125,
-      indent: 2,
+      appearAt: 120,
       segments: [
-        { text: "Run ", color: COLORS.dimText },
-        { text: "/reload-plugins", color: COLORS.highlight },
-        { text: " to activate.", color: COLORS.dimText },
+        { text: "╰──────────────────────────────────────────────╯", color: COLORS.separator },
       ],
     },
   ];

@@ -2,7 +2,6 @@ import React from "react";
 import { TerminalBlock, TerminalLineConfig } from "../components/TerminalLine";
 import { COLORS } from "../theme";
 
-// Helper to create iteration block lines
 const createIteration = (
   baseFrame: number,
   iterNum: number,
@@ -10,74 +9,62 @@ const createIteration = (
   storyTitle: string,
   verifyMsg: string
 ): TerminalLineConfig[] => [
-  // Header: Iteration N/10
   {
     appearAt: baseFrame,
     segments: [
-      { text: `Iteration ${iterNum}/10`, color: COLORS.highlight, bold: true },
+      { text: `  Loop iteration ${iterNum}/10`, color: COLORS.separator },
+      { text: " ─────────────────────────", color: COLORS.separator },
     ],
   },
-  // Arrow: US-XXX story
   {
-    appearAt: baseFrame + 12,
-    indent: 2,
+    appearAt: baseFrame + 10,
+    indent: 4,
     segments: [
-      { text: "\u2192 ", color: COLORS.dimText },
-      { text: `${storyId}: `, color: COLORS.accent, bold: true },
-      { text: storyTitle, color: COLORS.text },
+      { text: `${storyId}`, color: COLORS.highlight, bold: true },
+      { text: ` ${storyTitle}`, color: COLORS.text },
     ],
   },
-  // Arrow: Verified
   {
-    appearAt: baseFrame + 30,
-    indent: 2,
+    appearAt: baseFrame + 25,
+    indent: 4,
     segments: [
-      { text: "\u2192 Verified: ", color: COLORS.dimText },
+      { text: "Read → Implement → ", color: COLORS.dimText },
       { text: verifyMsg, color: COLORS.text },
-      { text: " \u2713", color: COLORS.accent, bold: true },
+      { text: " ✓", color: COLORS.accent, bold: true },
     ],
   },
-  // Arrow: Committed
   {
-    appearAt: baseFrame + 45,
-    indent: 2,
+    appearAt: baseFrame + 40,
+    indent: 4,
     segments: [
-      { text: "\u2192 Committed: ", color: COLORS.dimText },
-      {
-        text: `feat: ${storyId}`,
-        color: COLORS.accent,
-      },
+      { text: "git commit ", color: COLORS.dimText },
+      { text: `feat: ${storyId} ${storyTitle}`, color: COLORS.accent },
     ],
   },
-  // blank
-  { appearAt: baseFrame + 58, segments: [{ text: "" }] },
+  { appearAt: baseFrame + 55, segments: [{ text: "" }] },
 ];
 
-// Scene 3: Loop iterations (frames 0-300 within this scene, ~10s)
+// Scene 3: Claude implements stories autonomously, stop hook re-injects (10s)
 export const SceneIterations: React.FC = () => {
   const lines: TerminalLineConfig[] = [
-    ...createIteration(0, 1, "US-001", "Add users table", "migration runs"),
-    ...createIteration(
-      75,
-      2,
-      "US-002",
-      "Add JWT auth middleware",
-      "token validation"
-    ),
-    ...createIteration(
-      150,
-      3,
-      "US-003",
-      "Add login API endpoint",
-      "POST /login returns token"
-    ),
-    ...createIteration(
-      225,
-      4,
-      "US-004",
-      "Add protected routes",
-      "401 without token"
-    ),
+    {
+      appearAt: 0,
+      segments: [
+        { text: "  Claude", color: COLORS.highlight, bold: true },
+        { text: " is implementing stories autonomously...", color: COLORS.dimText },
+      ],
+    },
+    {
+      appearAt: 8,
+      segments: [
+        { text: "  Stop hook re-injects prompt each iteration", color: COLORS.dimText },
+      ],
+    },
+    { appearAt: 15, segments: [{ text: "" }] },
+    ...createIteration(20, 1, "US-001", "Add users table", "migration passes"),
+    ...createIteration(90, 2, "US-002", "JWT auth middleware", "token validated"),
+    ...createIteration(160, 3, "US-003", "Login API endpoint", "POST /login OK"),
+    ...createIteration(230, 4, "US-004", "Protected routes", "401 without token"),
   ];
 
   return <TerminalBlock lines={lines} />;

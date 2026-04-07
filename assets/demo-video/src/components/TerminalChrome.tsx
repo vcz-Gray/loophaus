@@ -80,7 +80,7 @@ export const TerminalChrome: React.FC<{ children: React.ReactNode }> = ({
               marginRight: 52, // offset for traffic lights to center text
             }}
           >
-            Terminal — loophaus
+            Claude Code — my-project
           </div>
         </div>
         {/* Terminal body */}
