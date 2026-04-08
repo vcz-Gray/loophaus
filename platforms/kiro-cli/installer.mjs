@@ -1,18 +1,19 @@
 // platforms/kiro-cli/installer.mjs
-import { readFile, writeFile, mkdir, access, rm } from "node:fs/promises";
-import { join, resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { writeFile, mkdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 import { homedir } from "node:os";
+import {
+  fileExists,
+  getProjectRoot,
+  printBanner,
+  checkExisting,
+  printResult,
+} from "../base-installer.mjs";
 
-const __filename = fileURLToPath(import.meta.url);
-const PROJECT_ROOT = resolve(dirname(__filename), "../..");
+const PROJECT_ROOT = getProjectRoot(import.meta.url);
 
 function getKiroHome() {
   return join(homedir(), ".kiro");
-}
-
-async function fileExists(p) {
-  try { await access(p); return true; } catch { return false; }
 }
 
 // Kiro CLI skill definitions (description-based auto-matching)
@@ -129,10 +130,7 @@ export async function install({ dryRun = false, force = false } = {}) {
   const agentsDir = join(kiroHome, "agents");
   const skillsDir = join(kiroHome, "skills");
 
-  console.log("");
-  console.log(`loophaus installer — Kiro CLI${dryRun ? " (DRY RUN)" : ""}`);
-  console.log(`Target: ${kiroHome}`);
-  console.log("");
+  printBanner("Kiro CLI", { dryRun, target: kiroHome });
 
   // Step 1: Create agent config with stop hook
   console.log("[1/4] Configuring agent with stop hook...");
@@ -145,14 +143,7 @@ export async function install({ dryRun = false, force = false } = {}) {
   };
 
   const agentPath = join(agentsDir, "loophaus.json");
-  if (!force && await fileExists(agentPath)) {
-    if (dryRun) {
-      console.log("  ! Existing agent config found (would prompt for --force)");
-    } else {
-      console.log("  ! Existing agent config found. Use --force to overwrite.");
-      return false;
-    }
-  }
+  if (!(await checkExisting(agentPath, { dryRun, force }))) return false;
 
   console.log(`  > Write ${agentPath}`);
   if (!dryRun) {
@@ -192,15 +183,14 @@ export async function install({ dryRun = false, force = false } = {}) {
     }
   }
 
-  console.log("");
-  if (dryRun) {
-    console.log("  \u2714 Dry run complete. No files were modified.");
-  } else {
-    console.log("  \u2714 loophaus installed for Kiro CLI!");
-    console.log("  Skills auto-match via description keywords.");
-    console.log("  To uninstall: npx @graypark/loophaus uninstall --kiro");
-  }
-  console.log("");
+  printResult({
+    dryRun,
+    successLines: [
+      "  \u2714 loophaus installed for Kiro CLI!",
+      "  Skills auto-match via description keywords.",
+      "  To uninstall: npx @graypark/loophaus uninstall --kiro",
+    ],
+  });
   return true;
 }
 
@@ -247,11 +237,10 @@ export async function uninstall({ dryRun = false } = {}) {
     }
   }
 
-  console.log("");
-  if (dryRun) {
-    console.log("  \u2714 Dry run complete. No files were modified.");
-  } else {
-    console.log("  \u2714 loophaus removed from Kiro CLI.");
-  }
-  console.log("");
+  printResult({
+    dryRun,
+    successLines: [
+      "  \u2714 loophaus removed from Kiro CLI.",
+    ],
+  });
 }

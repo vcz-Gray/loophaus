@@ -33,7 +33,7 @@ const VALID_COMMANDS = [
   "install", "uninstall", "status", "stats", "loops", "watch",
   "replay", "compare", "worktree", "parallel", "quality",
   "sessions", "resume", "benchmark", "clean", "config",
-  "update-check", "upgrade", "demo", "help",
+  "update-check", "upgrade", "repair", "demo", "help",
 ];
 
 validateFlags(args, KNOWN_FLAGS);
@@ -58,6 +58,7 @@ Usage:
   npx @graypark/loophaus config [list|get|set] [key] [value]
   npx @graypark/loophaus update-check
   npx @graypark/loophaus upgrade
+  npx @graypark/loophaus repair [--dry-run]
   npx @graypark/loophaus sessions
   npx @graypark/loophaus resume <session-id>
   npx @graypark/loophaus demo
@@ -119,6 +120,7 @@ try {
     case "config": { const m = await import("./commands/config.js"); await m.run(ctx); break; }
     case "update-check": { const m = await import("./commands/update.js"); await m.runUpdateCheck(ctx); break; }
     case "upgrade": { const m = await import("./commands/update.js"); await m.runUpgrade(ctx); break; }
+    case "repair": { const m = await import("./commands/repair.js"); await m.run(ctx); break; }
     case "sessions": { const m = await import("./commands/sessions.js"); await m.run(ctx); break; }
     case "resume": { const m = await import("./commands/sessions.js"); await m.runResume(ctx); break; }
     case "demo": { const m = await import("./commands/demo.js"); await m.run(ctx); break; }

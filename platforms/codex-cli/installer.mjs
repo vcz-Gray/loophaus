@@ -1,7 +1,6 @@
 // platforms/codex-cli/installer.mjs
-import { readFile, writeFile, mkdir, cp, access, rm } from "node:fs/promises";
-import { join, resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFile, writeFile, mkdir, cp, rm } from "node:fs/promises";
+import { join, dirname } from "node:path";
 import {
   getCodexHome,
   getHooksJsonPath,
@@ -10,13 +9,16 @@ import {
   getAgentsHome,
   getAgentsSkillsDir,
 } from "../../lib/paths.js";
+import {
+  fileExists,
+  getProjectRoot,
+  printBanner,
+  checkExisting,
+  copyDirs,
+  printResult,
+} from "../base-installer.mjs";
 
-const __filename = fileURLToPath(import.meta.url);
-const PROJECT_ROOT = resolve(dirname(__filename), "../..");
-
-async function fileExists(p) {
-  try { await access(p); return true; } catch { return false; }
-}
+const PROJECT_ROOT = getProjectRoot(import.meta.url);
 
 export async function detect() {
   return (await fileExists(getCodexHome())) || (await fileExists(getAgentsHome()));
@@ -153,20 +155,13 @@ export async function install({ dryRun = false, force = false, local = false } =
     ? join(process.cwd(), ".codex", "skills")
     : getSkillsDir();
 
-  console.log("");
-  console.log(`loophaus installer — Codex CLI${dryRun ? " (DRY RUN)" : ""}`);
-  console.log(`Mode: ${local ? "local (.codex/)" : "global (~/.codex/)"}`);
-  console.log(`Target: ${pluginDir}`);
-  console.log("");
+  printBanner("Codex CLI", {
+    dryRun,
+    target: pluginDir,
+    mode: local ? "local (.codex/)" : "global (~/.codex/)",
+  });
 
-  if (!force && await fileExists(pluginDir)) {
-    if (dryRun) {
-      console.log("  ! Existing installation found (would prompt for --force)");
-    } else {
-      console.log("  ! Existing installation found. Use --force to overwrite.");
-      return false;
-    }
-  }
+  if (!(await checkExisting(pluginDir, { dryRun, force }))) return false;
 
   const totalSteps = 4;
 
@@ -185,17 +180,17 @@ export async function install({ dryRun = false, force = false, local = false } =
 
   // Step 2: Copy files
   console.log(`[2/${totalSteps}] Copying plugin files...`);
-  for (const dir of ["hooks", "codex/commands", "scripts", "lib", "core", "store"]) {
-    const src = join(PROJECT_ROOT, dir);
-    if (!(await fileExists(src))) continue;
-    const destDir = dir === "codex/commands" ? "commands" : dir;
-    const dest = join(pluginDir, destDir);
-    console.log(`  > Copy ${dir}/ -> ${dest}`);
-    if (!dryRun) {
-      await mkdir(dest, { recursive: true });
-      await cp(src, dest, { recursive: true });
-    }
-  }
+  await copyDirs(
+    [
+      "hooks",
+      { src: "codex/commands", dest: "commands" },
+      "scripts",
+      "lib",
+      "core",
+      "store",
+    ],
+    PROJECT_ROOT, pluginDir, { dryRun },
+  );
   if (!dryRun) await cp(join(PROJECT_ROOT, "package.json"), join(pluginDir, "package.json"));
 
   // Step 3: Hooks
@@ -234,14 +229,13 @@ export async function install({ dryRun = false, force = false, local = false } =
     }
   }
 
-  console.log("");
-  if (dryRun) {
-    console.log("  \u2714 Dry run complete. No files were modified.");
-  } else {
-    console.log("  \u2714 loophaus installed for Codex CLI!");
-    console.log("  Commands: /loop, /loop-plan, /loop-stop, /loop-pulse");
-    console.log(`  To uninstall: npx @graypark/loophaus uninstall${local ? " --local" : ""}`);
-  }
-  console.log("");
+  printResult({
+    dryRun,
+    successLines: [
+      "  \u2714 loophaus installed for Codex CLI!",
+      "  Commands: /loop, /loop-plan, /loop-stop, /loop-pulse",
+      `  To uninstall: npx @graypark/loophaus uninstall${local ? " --local" : ""}`,
+    ],
+  });
   return true;
 }

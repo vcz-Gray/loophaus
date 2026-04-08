@@ -1,7 +1,6 @@
 // platforms/claude-code/installer.mjs
-import { readFile, writeFile, mkdir, cp, access, chmod } from "node:fs/promises";
-import { join, resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFile, writeFile, mkdir, chmod } from "node:fs/promises";
+import { join } from "node:path";
 import {
   getClaudeHome,
   getClaudePluginsDir,
@@ -10,13 +9,17 @@ import {
   getClaudeInstalledPluginsPath,
   getPackageVersion,
 } from "../../lib/paths.js";
+import {
+  fileExists,
+  getProjectRoot,
+  printBanner,
+  checkExisting,
+  copyDirs,
+  copyFiles,
+  printResult,
+} from "../base-installer.mjs";
 
-const __filename = fileURLToPath(import.meta.url);
-const PROJECT_ROOT = resolve(dirname(__filename), "../..");
-
-async function fileExists(p) {
-  try { await access(p); return true; } catch { return false; }
-}
+const PROJECT_ROOT = getProjectRoot(import.meta.url);
 
 export async function detect() {
   return fileExists(join(getClaudeHome(), "settings.json")) || fileExists(getClaudeHome());
@@ -31,42 +34,17 @@ export async function install({ dryRun = false, force = false } = {}) {
   const pluginsDir = getClaudePluginsDir();
   const marketplaceDir = join(pluginsDir, "marketplaces", MARKETPLACE_NAME);
 
-  console.log("");
-  console.log(`loophaus installer — Claude Code${dryRun ? " (DRY RUN)" : ""}`);
-  console.log(`Version: ${version}`);
-  console.log(`Target: ${cacheDir}`);
-  console.log("");
+  printBanner("Claude Code", { dryRun, target: cacheDir, version });
 
-  if (!force && await fileExists(cacheDir)) {
-    if (dryRun) {
-      console.log("  ! Existing installation found (would prompt for --force)");
-    } else {
-      console.log("  ! Existing installation found. Use --force to overwrite.");
-      return false;
-    }
-  }
+  if (!(await checkExisting(cacheDir, { dryRun, force }))) return false;
 
   // Step 1: Copy plugin files
   console.log("[1/4] Copying plugin files...");
-  const dirs = [".claude-plugin", "commands", "hooks", "scripts", "skills", "lib", "core", "store"];
-  for (const dir of dirs) {
-    const src = join(PROJECT_ROOT, dir);
-    if (!(await fileExists(src))) continue;
-    const dest = join(cacheDir, dir);
-    console.log(`  > Copy ${dir}/ -> ${dest}`);
-    if (!dryRun) {
-      await mkdir(dest, { recursive: true });
-      await cp(src, dest, { recursive: true });
-    }
-  }
-
-  for (const file of ["package.json", "LICENSE", "README.md"]) {
-    const src = join(PROJECT_ROOT, file);
-    if (await fileExists(src)) {
-      console.log(`  > Copy ${file}`);
-      if (!dryRun) await cp(src, join(cacheDir, file));
-    }
-  }
+  await copyDirs(
+    [".claude-plugin", "commands", "hooks", "scripts", "skills", "lib", "core", "store"],
+    PROJECT_ROOT, cacheDir, { dryRun },
+  );
+  await copyFiles(["package.json", "LICENSE", "README.md"], PROJECT_ROOT, cacheDir, { dryRun });
 
   if (!dryRun) {
     const sh = join(cacheDir, "scripts", "setup-ralph-loop.sh");
@@ -155,17 +133,16 @@ export async function install({ dryRun = false, force = false } = {}) {
   };
   if (!dryRun) await writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
 
-  console.log("");
-  if (dryRun) {
-    console.log("  \u2714 Dry run complete.");
-  } else {
-    console.log("  \u2714 loophaus installed for Claude Code!");
-    console.log("");
-    console.log("  Run /reload-plugins in Claude Code to activate.");
-    console.log("  Commands: /loop, /loop-plan, /loop-stop, /loop-pulse");
-    console.log("  To uninstall: npx @graypark/loophaus uninstall --claude");
-  }
-  console.log("");
+  printResult({
+    dryRun,
+    successLines: [
+      "  \u2714 loophaus installed for Claude Code!",
+      "",
+      "  Run /reload-plugins in Claude Code to activate.",
+      "  Commands: /loop, /loop-plan, /loop-stop, /loop-pulse",
+      "  To uninstall: npx @graypark/loophaus uninstall --claude",
+    ],
+  });
   return true;
 }
 
