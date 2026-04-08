@@ -2,6 +2,9 @@ node_modules/
 dist/
 coverage/
 .loophaus/
+.gstack/
+.env
+.env.*
 .codex/ralph-loop.state.json
 *.log
 .DS_Store

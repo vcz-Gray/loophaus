@@ -122,10 +122,23 @@ export async function evaluateStory(storyId: string, cwd: string, config: Evalua
   const customPath = join(cwd, ".loophaus", "quality.mjs");
   try {
     await stat(customPath);
-    const mod = await import(customPath) as { evaluate?: (storyId: string, cwd: string) => Promise<number | { score?: number }> };
-    if (typeof mod.evaluate === "function") {
-      const customResult = await mod.evaluate(storyId, cwd);
-      results.custom = typeof customResult === "number" ? customResult : ((customResult as { score?: number })?.score ?? 0);
+    // Security: custom evaluators run with full Node.js permissions.
+    // Only load from .loophaus/ (gitignored, user-controlled directory).
+    const configPath = join(cwd, ".loophaus", "config.json");
+    let customEnabled = true;
+    try {
+      const configRaw = await readFile(configPath, "utf-8");
+      const config = JSON.parse(configRaw) as { customEvaluator?: boolean };
+      if (config.customEvaluator === false) customEnabled = false;
+    } catch { /* no config = enabled by default */ }
+
+    if (customEnabled) {
+      process.stderr.write(`loophaus: loading custom evaluator from ${customPath}\n`);
+      const mod = await import(customPath) as { evaluate?: (storyId: string, cwd: string) => Promise<number | { score?: number }> };
+      if (typeof mod.evaluate === "function") {
+        const customResult = await mod.evaluate(storyId, cwd);
+        results.custom = typeof customResult === "number" ? customResult : ((customResult as { score?: number })?.score ?? 0);
+      }
     }
   } catch {
     // No custom evaluator

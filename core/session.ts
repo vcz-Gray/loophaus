@@ -19,7 +19,15 @@ function getSessionsDir(cwd?: string): string {
   return join(cwd || process.cwd(), ".loophaus", "sessions");
 }
 
+function validateSessionId(id: string): void {
+  if (!id || typeof id !== "string") throw new Error("Session ID is required");
+  if (!/^[a-zA-Z0-9._-]+$/.test(id)) {
+    throw new Error(`Invalid session ID: ${id}. Use alphanumeric, dot, dash, or underscore only.`);
+  }
+}
+
 export async function saveCheckpoint(sessionId: string, data: CheckpointData, cwd?: string): Promise<Checkpoint> {
+  validateSessionId(sessionId);
   const dir = getSessionsDir(cwd);
   await mkdir(dir, { recursive: true });
   const checkpoint: Checkpoint = {
@@ -32,6 +40,7 @@ export async function saveCheckpoint(sessionId: string, data: CheckpointData, cw
 }
 
 export async function loadCheckpoint(sessionId: string, cwd?: string): Promise<Checkpoint | null> {
+  validateSessionId(sessionId);
   const dir = getSessionsDir(cwd);
   try {
     const raw = await readFile(join(dir, `${sessionId}.json`), "utf-8");

@@ -114,10 +114,30 @@ export async function runCommand(
   return execFileAsync(resolved, args, execOptions);
 }
 
+const DANGEROUS_PATTERNS = [
+  /\brm\s+-rf\s+[/~]/,   // rm -rf / or ~
+  /\bcurl\b.*\|\s*\bsh\b/, // curl | sh
+  /\bwget\b.*\|\s*\bsh\b/, // wget | sh
+  /\beval\b/,              // eval
+  />\s*\/etc\//,           // redirect to /etc/
+  /\bsudo\b/,              // sudo
+];
+
 export async function runShellCommand(
   command: string,
   options: CommandOptions = {},
 ): Promise<CommandResult> {
+  // Log command for audit trail
+  if (process.env.LOOPHAUS_DEBUG === "1") {
+    process.stderr.write(`[loophaus:shell] ${command}\n`);
+  }
+  // Warn on dangerous patterns (non-blocking)
+  for (const pattern of DANGEROUS_PATTERNS) {
+    if (pattern.test(command)) {
+      process.stderr.write(`loophaus: WARNING — potentially dangerous command detected: ${command}\n`);
+      break;
+    }
+  }
   return execAsync(command, {
     ...createBaseExecOptions(options),
     shell: getDefaultShell(),
