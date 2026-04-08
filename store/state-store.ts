@@ -1,15 +1,19 @@
-import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
+import { readFile, writeFile, mkdir, rename, copyFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { validateState } from "../core/validate.js";
+import { withLock } from "../core/file-lock.js";
+import { migrateState, needsMigration, CURRENT_SCHEMA_VERSION } from "../core/state-migration.js";
 import type { LoopState, QualityConfig } from "../core/types.js";
 
 export interface StateStoreData extends LoopState {
+  schemaVersion: number;
   qualityThreshold: number;
   maxRefineAttempts: number;
   qualityConfig: QualityConfig | null;
 }
 
 const DEFAULT_STATE: StateStoreData = {
+  schemaVersion: CURRENT_SCHEMA_VERSION,
   active: false,
   prompt: "",
   completionPromise: "TADA",
@@ -40,7 +44,23 @@ export async function read(cwd?: string, name?: string): Promise<StateStoreData>
 
   try {
     const raw = await readFile(primary, "utf-8");
-    const state: StateStoreData = { ...DEFAULT_STATE, ...JSON.parse(raw) };
+    let parsed = JSON.parse(raw) as Record<string, unknown>;
+
+    // Auto-migrate old schema versions
+    if (needsMigration(parsed)) {
+      parsed = migrateState(parsed);
+      // Write migrated state back (with backup)
+      try {
+        await copyFile(primary, primary + ".bak");
+        const tmp = primary + ".tmp";
+        await writeFile(tmp, JSON.stringify(parsed, null, 2), "utf-8");
+        await rename(tmp, primary);
+      } catch {
+        // Best-effort migration persistence
+      }
+    }
+
+    const state: StateStoreData = { ...DEFAULT_STATE, ...parsed };
     const result = validateState(state);
     if (!result.valid) {
       process.stderr.write(`loophaus: state validation warning: ${result.errors.join(", ")}\n`);
@@ -74,9 +94,12 @@ export async function write(state: StateStoreData, cwd?: string, name?: string):
   }
   const statePath = getStatePath(cwd, name);
   await mkdir(dirname(statePath), { recursive: true });
-  const tmp = statePath + ".tmp";
-  await writeFile(tmp, JSON.stringify(state, null, 2), "utf-8");
-  await rename(tmp, statePath);
+
+  await withLock(statePath, async () => {
+    const tmp = statePath + ".tmp";
+    await writeFile(tmp, JSON.stringify({ ...state, schemaVersion: CURRENT_SCHEMA_VERSION }, null, 2), "utf-8");
+    await rename(tmp, statePath);
+  });
 }
 
 export async function reset(cwd?: string): Promise<void> {
@@ -105,10 +128,16 @@ export async function readState(cwd?: string): Promise<StateStoreData> { return 
 export async function writeState(state: StateStoreData, cwd?: string): Promise<void> { return write(state, cwd); }
 export async function resetState(cwd?: string): Promise<void> { return reset(cwd); }
 export async function incrementIteration(cwd?: string): Promise<StateStoreData> {
-  const state = await read(cwd);
-  state.currentIteration += 1;
-  await write(state, cwd);
-  return state;
+  const statePath = getStatePath(cwd);
+  return withLock(statePath, async () => {
+    const state = await read(cwd);
+    state.currentIteration += 1;
+    // Direct write without re-locking (we already hold the lock)
+    const tmp = statePath + ".tmp";
+    await writeFile(tmp, JSON.stringify({ ...state, schemaVersion: CURRENT_SCHEMA_VERSION }, null, 2), "utf-8");
+    await rename(tmp, statePath);
+    return state;
+  });
 }
 
 export { DEFAULT_STATE };
